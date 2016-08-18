@@ -25,7 +25,7 @@
 #import <XCTest/XCTest.h>
 #import "XCTestCase+TestHelperMethods.h"
 #import "ADAuthenticationContext.h"
-#import "ADTestURLConnection.h"
+#import "ADNetworkMock.h"
 #import "ADAuthenticationResult.h"
 
 @interface ADAuthortyValidationTests : XCTestCase
@@ -54,7 +54,7 @@
     XCTAssertNotNil(context);
     XCTAssertNil(error);
     
-    [ADTestURLConnection addInvalidAuthorityResponse:authority];
+    [ADNetworkMock addInvalidAuthorityResponse:authority];
     
     __block dispatch_semaphore_t dsem = dispatch_semaphore_create(0);
     [context acquireTokenWithResource:TEST_RESOURCE

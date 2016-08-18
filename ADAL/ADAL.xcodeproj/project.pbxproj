@@ -145,6 +145,10 @@
 		9453C46E1C5872B0006B9E79 /* ADJwtHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 9453C46C1C5872AD006B9E79 /* ADJwtHelper.m */; };
 		9453C4741C5874FB006B9E79 /* ADBrokerHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 9453C4731C5874FB006B9E79 /* ADBrokerHelper.m */; };
 		946818A71C59B7F200CA0378 /* ADWebAuthController.m in Sources */ = {isa = PBXBuildFile; fileRef = 946818A41C59B7EE00CA0378 /* ADWebAuthController.m */; };
+		94AA4F3D1D664E8700E4F650 /* ADNetworkMock.mm in Sources */ = {isa = PBXBuildFile; fileRef = 94AA4F3C1D664E8700E4F650 /* ADNetworkMock.mm */; };
+		94AA4F3E1D664E8700E4F650 /* ADNetworkMock.mm in Sources */ = {isa = PBXBuildFile; fileRef = 94AA4F3C1D664E8700E4F650 /* ADNetworkMock.mm */; };
+		94AA4F411D66529F00E4F650 /* NetworkMock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94AA4F3F1D66529F00E4F650 /* NetworkMock.cpp */; };
+		94AA4F421D66529F00E4F650 /* NetworkMock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 94AA4F3F1D66529F00E4F650 /* NetworkMock.cpp */; };
 		94DD18CA1C5A00BC00F80C62 /* ADAuthenticationViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 94DD18C91C5A00BC00F80C62 /* ADAuthenticationViewController.m */; };
 		94DD18CF1C5AC8DE00F80C62 /* ADAL.h in Headers */ = {isa = PBXBuildFile; fileRef = 9453C3B71C583AE6006B9E79 /* ADAL.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		94DD18D01C5AC8DE00F80C62 /* ADAuthenticationContext.h in Headers */ = {isa = PBXBuildFile; fileRef = 9453C3B81C583AE6006B9E79 /* ADAuthenticationContext.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -671,6 +675,10 @@
 		946818A41C59B7EE00CA0378 /* ADWebAuthController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ADWebAuthController.m; sourceTree = "<group>"; };
 		946818A51C59B7EE00CA0378 /* ADWebAuthController+Internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ADWebAuthController+Internal.h"; sourceTree = "<group>"; };
 		946818A81C59B80800CA0378 /* ADAuthenticationViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ADAuthenticationViewController.m; sourceTree = "<group>"; };
+		94AA4F3B1D664E8700E4F650 /* ADNetworkMock.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ADNetworkMock.h; sourceTree = "<group>"; };
+		94AA4F3C1D664E8700E4F650 /* ADNetworkMock.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ADNetworkMock.mm; sourceTree = "<group>"; };
+		94AA4F3F1D66529F00E4F650 /* NetworkMock.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NetworkMock.cpp; sourceTree = "<group>"; };
+		94AA4F401D66529F00E4F650 /* NetworkMock.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NetworkMock.h; sourceTree = "<group>"; };
 		94DD18C91C5A00BC00F80C62 /* ADAuthenticationViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ADAuthenticationViewController.m; sourceTree = "<group>"; };
 		94DD18E11C5ACFBF00F80C62 /* ADAL Mac Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ADAL Mac Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		94DD19011C5AD39A00F80C62 /* ADALiOSTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "ADALiOSTests-Info.plist"; sourceTree = "<group>"; };
@@ -894,6 +902,8 @@
 			children = (
 				6071B5E21C14C0B0006F6CC2 /* ADTestURLConnection.h */,
 				6071B5E31C14C0B0006F6CC2 /* ADTestURLConnection.m */,
+				94AA4F3B1D664E8700E4F650 /* ADNetworkMock.h */,
+				94AA4F3C1D664E8700E4F650 /* ADNetworkMock.mm */,
 				8BB8346A1807BE3F007F9F0D /* ADAcquireTokenTests.m */,
 				D6F9997F1D235ACF004E682C /* ADAcquireTokenPkeyAuthTests.m */,
 				9430C3551C55862A00D6506D /* ADAuthorityValidationTests.m */,
@@ -919,6 +929,8 @@
 				601BEE301C6DAA86004AA8C1 /* ADTestAuthenticationViewController.m */,
 				601BEE331C6DCB0B004AA8C1 /* ADWebAuthControllerTests.m */,
 				600401B01D3578C30020EAAB /* ADTelemetryTests.m */,
+				94AA4F3F1D66529F00E4F650 /* NetworkMock.cpp */,
+				94AA4F401D66529F00E4F650 /* NetworkMock.h */,
 			);
 			path = tests;
 			sourceTree = "<group>";
@@ -1622,6 +1634,7 @@
 				601BEE341C6DCB0B004AA8C1 /* ADWebAuthControllerTests.m in Sources */,
 				6071B5E41C14C0B0006F6CC2 /* ADTestURLConnection.m in Sources */,
 				8BBF678618358544004E0F4D /* ADUserInformationTests.m in Sources */,
+				94AA4F3D1D664E8700E4F650 /* ADNetworkMock.mm in Sources */,
 				94DD19081C5AD3A600F80C62 /* ADKeychainTokenCacheTests.m in Sources */,
 				600401B11D3578C30020EAAB /* ADTelemetryTests.m in Sources */,
 				8BB8346D1807C5F5007F9F0D /* ADAuthenticationParametersTests.m in Sources */,
@@ -1638,6 +1651,7 @@
 				9430C3411C4631C200D6506D /* ADTokenCacheTests.m in Sources */,
 				8B3032231861347B00C61E7F /* ADTokenCacheKeyTests.m in Sources */,
 				9430C34E1C54320400D6506D /* ADAuthenticationContextTests.m in Sources */,
+				94AA4F411D66529F00E4F650 /* NetworkMock.cpp in Sources */,
 				8B6114031872127C007759C2 /* ADInstanceDiscoveryTests.m in Sources */,
 				8B92DB671819FA61004AAB0E /* ADTestNSStringHelperMethods.m in Sources */,
 				97A522501A1A8999001D77CE /* ADClientMetricsTests.m in Sources */,
@@ -1721,6 +1735,7 @@
 				601BEE351C6DCB0B004AA8C1 /* ADWebAuthControllerTests.m in Sources */,
 				D60D8FE91D25C8D400F3E6C9 /* ADHelpersTests.m in Sources */,
 				94DD18F91C5ACFF900F80C62 /* ADUserInformationTests.m in Sources */,
+				94AA4F3E1D664E8700E4F650 /* ADNetworkMock.mm in Sources */,
 				94DD18F71C5ACFF900F80C62 /* ADLoggerTests.m in Sources */,
 				94DD18F11C5ACFF000F80C62 /* ADAuthenticationParametersTests.m in Sources */,
 				94DD18FB1C5ACFF900F80C62 /* ADTokenCacheKeyTests.m in Sources */,
@@ -1728,6 +1743,7 @@
 				94DD18EF1C5ACFF000F80C62 /* ADAuthorityValidationTests.m in Sources */,
 				94DD18FE1C5ACFF900F80C62 /* ADClientMetricsTests.m in Sources */,
 				94DD18F01C5ACFF000F80C62 /* ADAuthenticationContextTests.m in Sources */,
+				94AA4F421D66529F00E4F650 /* NetworkMock.cpp in Sources */,
 				94DD18F81C5ACFF900F80C62 /* ADAuthenticationResultTests.m in Sources */,
 				94DD18F51C5ACFF900F80C62 /* XCTestCase+TestHelperMethods.m in Sources */,
 				601BEE321C6DAA86004AA8C1 /* ADTestAuthenticationViewController.m in Sources */,

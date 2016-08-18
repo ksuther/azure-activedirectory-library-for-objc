@@ -21,17 +21,4 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#import <Foundation/Foundation.h>
-
-@interface ADTestURLConnection : NSObject
-{
-    NSOperationQueue* _delegateQueue;
-    NSURLRequest* _request;
-    id _delegate;
-}
-
-- (id)initWithRequest:(NSURLRequest*)request
-             delegate:(id)delegate
-     startImmediately:(BOOL)startImmediately;
-
-@end
+#pragma once

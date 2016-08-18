@@ -25,7 +25,7 @@
 #import "XCTestCase+TestHelperMethods.h"
 #import "ADTokenCache+Internal.h"
 #import "ADAuthenticationContext+Internal.h"
-#import "ADTestURLConnection.h"
+#import "ADNetworkMock.h"
 #import "ADTokenCacheItem+Internal.h"
 
 @interface ADAcquireTokenPkeyAuthTests : XCTestCase
@@ -50,8 +50,8 @@
 #endif
     _dsem = nil;
     
-    XCTAssertTrue([ADTestURLConnection noResponsesLeft]);
-    [ADTestURLConnection clearResponses];
+    XCTAssertTrue([ADNetworkMock noResponsesLeft]);
+    [ADNetworkMock clearResponses];
     [self adTestEnd];
     [super tearDown];
 }
@@ -105,7 +105,7 @@
     [context.tokenCacheStore.dataSource addOrUpdateItem:[self adCreateMRRTCacheItem] correlationId:nil error:&error];
     XCTAssertNil(error);
     
-    [ADTestURLConnection addResponses:@[[self defaultTokenEndpointPkeyAuthChallenge],
+    [ADNetworkMock addResponses:@[[self defaultTokenEndpointPkeyAuthChallenge],
                                         [self defaultPkeyAuthNoWPJResponse]]];
     
     [context acquireTokenSilentWithResource:TEST_RESOURCE

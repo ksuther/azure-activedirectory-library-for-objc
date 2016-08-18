@@ -29,7 +29,7 @@
 #import "ADInstanceDiscovery.h"
 #import <libkern/OSAtomic.h>
 #import "ADAuthenticationSettings.h"
-#import "ADTestURLConnection.h"
+#import "ADNetworkMock.h"
 
 static NSString* const sAlwaysTrusted = @"https://login.windows.net";
 
@@ -230,7 +230,7 @@ static NSString* const sAlwaysTrusted = @"https://login.windows.net";
     ADInstanceDiscovery* discovery = [[ADInstanceDiscovery alloc] init];
     NSUUID* correlationId = [NSUUID UUID];
     
-    [ADTestURLConnection addResponse:[ADTestURLResponse responseValidAuthority:@"https://login.windows-ppe.net/common"]];
+    [ADNetworkMock addResponse:[ADTestURLResponse responseValidAuthority:@"https://login.windows-ppe.net/common"]];
     
     [discovery validateAuthority:@"https://login.windows-ppe.net/common"
                    correlationId:correlationId
@@ -254,7 +254,7 @@ static NSString* const sAlwaysTrusted = @"https://login.windows.net";
     ADInstanceDiscovery* discovery = [[ADInstanceDiscovery alloc] init];
     NSUUID* correlationId = [NSUUID UUID];
     
-    [ADTestURLConnection addResponse:[ADTestURLResponse responseInvalidAuthority:@"https://myfakeauthority.microsoft.com/contoso.com"]];
+    [ADNetworkMock addResponse:[ADTestURLResponse responseInvalidAuthority:@"https://myfakeauthority.microsoft.com/contoso.com"]];
     
     [discovery validateAuthority:@"https://MyFakeAuthority.microsoft.com/contoso.com"
                    correlationId:correlationId
@@ -278,7 +278,7 @@ static NSString* const sAlwaysTrusted = @"https://login.windows.net";
     NSURL* requestURL = [NSURL URLWithString:@"https://SomeValidURLButNotExistentInTheNet.com/common/discovery/instance?api-version=1.0&authorization_endpoint=https://login.windows.cn/MSOpenTechBV.onmicrosoft.com/oauth2/authorize&x-client-Ver=" ADAL_VERSION_STRING];
     NSError* responseError = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCannotFindHost userInfo:nil];
     
-    [ADTestURLConnection addResponse:[ADTestURLResponse request:requestURL
+    [ADNetworkMock addResponse:[ADTestURLResponse request:requestURL
                                                respondWithError:responseError]];
     
     [discovery requestValidationOfAuthority:@"https://login.windows.cn/MSOpenTechBV.onmicrosoft.com"
