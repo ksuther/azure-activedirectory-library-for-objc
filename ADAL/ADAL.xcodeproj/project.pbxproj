@@ -1363,12 +1363,15 @@
 			files = (
 			);
 			inputPaths = (
+				"$(PROJECT_DIR)/src/ADAL_Internal.h",
 			);
 			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/${INFOPLIST_PATH}",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "/usr/bin/python \"${PROJECT_DIR}/tools/update_build_version.py\" \"${PROJECT_DIR}/src/ADAL_Internal.h\" \"${BUILT_PRODUCTS_DIR}/${INFOPLIST_PATH}\"";
+			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
 
