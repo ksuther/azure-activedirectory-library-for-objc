@@ -23,11 +23,20 @@
 
 #import "ADTelemetry.h"
 #import "ADTelemetry+Internal.h"
-#import "ADEventInterface.h"
+#import "ADTelemetryEventInterface.h"
 #import "ADDefaultDispatcher.h"
 #import "ADAggregatedDispatcher.h"
+#import "ADTelemetryEventStrings.h"
 
 static NSString* const s_delimiter = @"|";
+
+@interface ADTelemetry()
+{
+    NSMutableArray<ADDefaultDispatcher *> *_dispatchers;
+    NSMutableDictionary* _eventTracking;
+}
+
+@end
 
 @implementation ADTelemetry
 
@@ -44,11 +53,12 @@ static NSString* const s_delimiter = @"|";
     if (self)
     {
         _eventTracking = [NSMutableDictionary new];
+        _dispatchers = [NSMutableArray new];
     }
     return self;
 }
 
-+ (ADTelemetry*)getInstance
++ (ADTelemetry*)sharedInstance
 {
     static dispatch_once_t once;
     static ADTelemetry* singleton = nil;
@@ -60,43 +70,42 @@ static NSString* const s_delimiter = @"|";
     return singleton;
 }
 
-- (void)registerDispatcher:(id<ADDispatcher>)dispatcher
+- (void)addDispatcher:(nonnull id<ADDispatcher>)dispatcher
        aggregationRequired:(BOOL)aggregationRequired
 {
     @synchronized(self)
     {
-        SAFE_ARC_RELEASE(_dispatcher);
         if (aggregationRequired)
         {
-            _dispatcher = [[ADAggregatedDispatcher alloc] initWithDispatcher:dispatcher];
+            [_dispatchers addObject:[[ADAggregatedDispatcher alloc] initWithDispatcher:dispatcher]];
         }
         else
         {
-            _dispatcher = [[ADDefaultDispatcher alloc] initWithDispatcher:dispatcher];
+            [_dispatchers addObject:[[ADDefaultDispatcher alloc] initWithDispatcher:dispatcher]];
         }
-        SAFE_ARC_RETAIN(_dispatcher);
     }
 }
 
-- (void)flush
+- (void)removeDispatcher:(nonnull id<ADDispatcher>)dispatcher
 {
     @synchronized(self)
     {
-        if (_dispatcher)
+        for(ADDefaultDispatcher *adDispatcher in _dispatchers)
         {
-            [_dispatcher flush];
+            if ([adDispatcher containsDispatcher:dispatcher])
+            {
+                [_dispatchers removeObject:adDispatcher];
+            }
         }
     }
 }
 
-- (void)dealloc
+- (void)removeAllDispatchers
 {
-    SAFE_ARC_RELEASE(_dispatcher);
-    _dispatcher = nil;
-    SAFE_ARC_RELEASE(_eventTracking);
-    _eventTracking = nil;
-    
-    SAFE_ARC_SUPER_DEALLOC();
+    @synchronized(self)
+    {
+        [_dispatchers removeAllObjects];
+    }
 }
 
 @end
@@ -117,14 +126,18 @@ static NSString* const s_delimiter = @"|";
     }
     
     NSDate* currentTime = [NSDate date];
-    [_eventTracking setObject:currentTime
-                       forKey: [self getEventTrackingKey:requestId eventName:eventName]];
+    @synchronized(self)
+    {
+        [_eventTracking setObject:currentTime
+                           forKey: [self getEventTrackingKey:requestId eventName:eventName]];
+    }
 }
 
 - (void)stopEvent:(NSString*)requestId
-            event:(id<ADEventInterface>)event
+            event:(id<ADTelemetryEventInterface>)event
 {
-    NSString* eventName = [self getPropertyFromEvent:event propertyName:@"event_name"];
+    NSDate* stopTime = [NSDate date];
+    NSString* eventName = [self getPropertyFromEvent:event propertyName:AD_TELEMETRY_KEY_EVENT_NAME];
     
     if ([NSString adIsStringNilOrBlank:requestId] || [NSString adIsStringNilOrBlank:eventName] || !event)
     {
@@ -132,28 +145,41 @@ static NSString* const s_delimiter = @"|";
     }
     
     NSString* key = [self getEventTrackingKey:requestId eventName:eventName];
-    NSDate* startTime = [_eventTracking objectForKey:key];
-    if (!startTime)
+    
+    NSDate* startTime = nil;
+    
+    @synchronized(self)
     {
-        return;
+        startTime = [_eventTracking objectForKey:key];
+        if (!startTime)
+        {
+            return;
+        }
     }
+    
     [event setStartTime:startTime];
-    [_eventTracking removeObjectForKey:key];
-    
-    NSDate* stopTime = [NSDate date];
     [event setStopTime:stopTime];
+    [event setResponseTime:[stopTime timeIntervalSinceDate:startTime]];
     
-    [self dispatchEventNow:requestId event:event];
+    @synchronized(self)
+    {
+        [_eventTracking removeObjectForKey:key];
+        
+        for (ADDefaultDispatcher *dispatcher in _dispatchers)
+        {
+            [dispatcher receive:requestId event:event];
+        }
+    }
 }
 
 - (void)dispatchEventNow:(NSString*)requestId
-                   event:(id<ADEventInterface>)event
+                   event:(id<ADTelemetryEventInterface>)event
 {
-    @synchronized(self)//Guard against thread-unsafe callback and modification of _dispatcher after the check
+    @synchronized(self)
     {
-        if (_dispatcher)
+        for (ADDefaultDispatcher *dispatcher in _dispatchers)
         {
-            [_dispatcher receive:requestId event:event];
+            [dispatcher receive:requestId event:event];
         }
     }
 }
@@ -164,18 +190,22 @@ static NSString* const s_delimiter = @"|";
     return [NSString stringWithFormat:@"%@%@%@", requestId, s_delimiter, eventName];
 }
 
-- (NSString*)getPropertyFromEvent:(id<ADEventInterface>)event
+- (NSString*)getPropertyFromEvent:(id<ADTelemetryEventInterface>)event
                      propertyName:(NSString*)propertyName
 {
-    NSArray* properties = [event getProperties];
-    for (NSArray* propertyValuePair in properties)
+    NSDictionary* properties = [event getProperties];
+    return [properties objectForKey:propertyName];
+}
+
+- (void)flush:(NSString*)requestId
+{
+    @synchronized(self)
     {
-        if ([[propertyValuePair objectAtIndex:0] isEqualToString:propertyName])
+        for (ADDefaultDispatcher *dispatcher in _dispatchers)
         {
-            return [propertyValuePair objectAtIndex:1];
+            [dispatcher flush:requestId];
         }
     }
-    return nil;
 }
 
 @end

@@ -38,7 +38,8 @@ static NSDictionary* _additionalProfiles()
 static NSDictionary* s_additionalProfiles = nil;
 
 
-NSString* ADTestAppCacheChangeNotification = @"ADTestAppCacheChangeNotification";
+NSString *ADTestAppCacheChangeNotification = @"ADTestAppCacheChangeNotification";
+NSString *ADTestAppProfileChangedNotification = @"ADTestAppProfileChangedNotification";
 
 static NSDictionary* s_profiles = nil;
 static NSArray* s_profileTitles = nil;
@@ -151,6 +152,7 @@ static NSUInteger s_currentProfileIdx = 0;
 {
     NSString* title = [s_profileTitles objectAtIndex:idx];
     s_currentProfileIdx = idx;
+    [[NSUserDefaults standardUserDefaults] setObject:title forKey:@"CurrentProfile"];
     NSDictionary* settings = [s_additionalProfiles objectForKey:title];
     if (!settings)
     {
@@ -162,6 +164,12 @@ static NSUInteger s_currentProfileIdx = 0;
     self.redirectUri = [NSURL URLWithString:[settings objectForKey:@"redirectUri"]];
     self.resource = [settings objectForKey:@"resource"];
     self.defaultUser = [settings objectForKey:@"defaultUser"];
+    NSNumber* validate = [settings objectForKey:@"validateAuthority"];
+    self.validateAuthority = validate ? [validate boolValue] : YES;
+    NSNumber* enableBroker = [settings objectForKey:@"enableBroker"];
+    self.enableBroker = [enableBroker boolValue];
+    
+    [[NSNotificationCenter defaultCenter] postNotificationName:ADTestAppProfileChangedNotification object:self];
 }
 
 @end

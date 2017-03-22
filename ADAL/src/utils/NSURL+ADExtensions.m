@@ -28,63 +28,56 @@
 const unichar fragmentSeparator = '#';
 const unichar queryStringSeparator = '?';
 
-@implementation NSURL ( ADAL )
-
-- (NSString *) adAuthority
-{
-    NSInteger port = self.port.integerValue;
-    
-    if ( port == 0 )
-    {
-        if ( [self.scheme isEqualToString:@"http"] )
-        {
-            port = 80;
-        }
-        else if ( [self.scheme isEqualToString:@"https"] )
-        {
-            port = 443;
-        }
-    }
-    
-    return [NSString stringWithFormat:@"%@:%ld", self.host, (long)port];
-}
-
-//Used for getting the parameters from either the fragment or the query
-//string. This internal helper method attempts to extract the parameters
-//for the substring of the URL succeeding the separator. Also, if the
-//separator is present more than once, the method returns null.
-//Unlike standard NSURL implementation, the method handles well URNs.
--(NSDictionary*) getParametersAfter: (unichar) startSeparator
-                              until: (unichar) endSeparator
-{
-    NSArray* parts = [[self absoluteString] componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithRange:(NSRange){startSeparator, 1}]];
-    if (parts.count != 2)
-    {
-        return nil;
-    }
-    NSString* last = [parts lastObject];
-    if (endSeparator)
-    {
-        long index = [last adFindCharacter:endSeparator start:0];
-        last = [last substringWithRange:(NSRange){0, index}];
-    }
-    if ([NSString adIsStringNilOrBlank:last])
-    {
-        return nil;
-    }
-    return [NSDictionary adURLFormDecode:last];
-}
+@implementation NSURL (ADAL)
 
 // Decodes parameters contained in a URL fragment
-- (NSDictionary *) adFragmentParameters
+- (NSDictionary *)adFragmentParameters
 {
-    return [self getParametersAfter:fragmentSeparator until:0];
+    return [NSDictionary adURLFormDecode:self.fragment];
 }
 
 // Decodes parameters contains in a URL query
-- (NSDictionary *) adQueryParameters
+- (NSDictionary *)adQueryParameters
 {
-    return [self getParametersAfter:queryStringSeparator until:fragmentSeparator];
+    NSURLComponents* components = [NSURLComponents componentsWithURL:self resolvingAgainstBaseURL:YES];
+    
+    return [NSDictionary adURLFormDecode:components.query];
+}
+
+- (BOOL)isEquivalentAuthority:(NSURL *)aURL
+{
+    
+    // Check if equal
+    if ([self isEqual:aURL])
+    {
+        return YES;
+    }
+    
+    // Check scheme and host
+    if (!self.scheme ||
+        !aURL.scheme ||
+        [self.scheme caseInsensitiveCompare:aURL.scheme] != NSOrderedSame)
+    {
+        return NO;
+    }
+    
+    if (!self.host ||
+        !aURL.host ||
+        [self.host caseInsensitiveCompare:aURL.host] != NSOrderedSame)
+    {
+        return NO;
+    }
+    
+    // Check port
+    if (self.port || aURL.port)
+    {
+        if (![self.port isEqual:aURL.port])
+        {
+            return NO;
+        }
+    }
+    
+    return YES;
 }
 
 @end

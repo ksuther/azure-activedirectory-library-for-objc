@@ -24,12 +24,14 @@
 
 #import "ADAL_Internal.h"
 #import "ADAuthenticationRequest.h"
-#import "ADInstanceDiscovery.h"
+#import "ADAuthorityValidation.h"
 #import "ADAuthenticationResult+Internal.h"
 #import "ADAuthenticationContext+Internal.h"
 #import "NSDictionary+ADExtensions.h"
 #import "NSString+ADHelperMethods.h"
 #import "NSURL+ADExtensions.h"
+#import "ADTelemetry.h"
+#import "ADTelemetry+Internal.h"
 
 #if TARGET_OS_IPHONE
 #import "ADBrokerKeyHelper.h"
@@ -40,15 +42,14 @@
 
 #include <libkern/OSAtomic.h>
 
-// Used to make sure one interactive request is going on at a time,
-// either launching webview or broker
-static dispatch_semaphore_t sInteractionInProgress = nil;
+static ADAuthenticationRequest* s_modalRequest = nil;
+static dispatch_semaphore_t s_interactionLock = nil;
 
 @implementation ADAuthenticationRequest
 
 @synthesize logComponent = _logComponent;
 
-#define RETURN_IF_NIL(_X) { if (!_X) { AD_LOG_ERROR(@#_X " must not be nil!", AD_FAILED, nil, nil); SAFE_ARC_RELEASE(self); return nil; } }
+#define RETURN_IF_NIL(_X) { if (!_X) { AD_LOG_ERROR(@#_X " must not be nil!", AD_FAILED, nil, nil); return nil; } }
 #define ERROR_RETURN_IF_NIL(_X) { \
     if (!_X) { \
         if (error) { \
@@ -60,7 +61,7 @@ static dispatch_semaphore_t sInteractionInProgress = nil;
 
 + (void)initialize
 {
-    sInteractionInProgress = dispatch_semaphore_create(1);
+    s_interactionLock = dispatch_semaphore_create(1);
 }
 
 + (ADAuthenticationRequest *)requestWithAuthority:(NSString *)authority
@@ -77,7 +78,6 @@ static dispatch_semaphore_t sInteractionInProgress = nil;
     {
         return nil;
     }
-    SAFE_ARC_AUTORELEASE(request);
     
     request->_context = context;
     
@@ -85,39 +85,27 @@ static dispatch_semaphore_t sInteractionInProgress = nil;
 }
 
 + (ADAuthenticationRequest*)requestWithContext:(ADAuthenticationContext*)context
-                                   redirectUri:(NSString*)redirectUri
-                                      clientId:(NSString*)clientId
-                                      resource:(NSString*)resource
+                                 requestParams:(ADRequestParameters*)requestParams
                                          error:(ADAuthenticationError* __autoreleasing *)error
 {
     ERROR_RETURN_IF_NIL(context);
-    ERROR_RETURN_IF_NIL(clientId);
+    ERROR_RETURN_IF_NIL([requestParams clientId]);
     
-    ADAuthenticationRequest *request = [[ADAuthenticationRequest alloc] initWithContext:context redirectUri:redirectUri clientId:clientId resource:resource];
-    SAFE_ARC_AUTORELEASE(request);
+    ADAuthenticationRequest *request = [[ADAuthenticationRequest alloc] initWithContext:context requestParams:requestParams];
     return request;
 }
 
 - (id)initWithContext:(ADAuthenticationContext*)context
-          redirectUri:(NSString*)redirectUri
-             clientId:(NSString*)clientId
-             resource:(NSString*)resource
+        requestParams:(ADRequestParameters*)requestParams
 {
     RETURN_IF_NIL(context);
-    RETURN_IF_NIL(clientId);
+    RETURN_IF_NIL([requestParams clientId]);
     
     if (!(self = [super init]))
         return nil;
     
-    SAFE_ARC_RETAIN(context);
     _context = context;
-    _tokenCache = context.tokenCacheStore;
-    _redirectUri = [redirectUri adTrimmedString];
-    SAFE_ARC_RETAIN(_redirectUri);
-    _clientId = [clientId adTrimmedString];
-    SAFE_ARC_RETAIN(_clientId);
-    _resource = [resource adTrimmedString];
-    SAFE_ARC_RETAIN(_resource);
+    _requestParams = requestParams;
     
     _promptBehavior = AD_PROMPT_AUTO;
     
@@ -125,22 +113,6 @@ static dispatch_semaphore_t sInteractionInProgress = nil;
     _allowSilent = NO;
     
     return self;
-}
-
-- (void)dealloc
-{
-    SAFE_ARC_RELEASE(_context);
-    SAFE_ARC_RELEASE(_clientId);
-    SAFE_ARC_RELEASE(_redirectUri);
-    SAFE_ARC_RELEASE(_identifier);
-    SAFE_ARC_RELEASE(_resource);
-    SAFE_ARC_RELEASE(_scope);
-    SAFE_ARC_RELEASE(_queryParams);
-    SAFE_ARC_RELEASE(_refreshTokenCredential);
-    SAFE_ARC_RELEASE(_correlationId);
-    SAFE_ARC_RELEASE(_underlyingError);
-    
-    SAFE_ARC_SUPER_DEALLOC();
 }
 
 #define CHECK_REQUEST_STARTED { \
@@ -158,7 +130,6 @@ static dispatch_semaphore_t sInteractionInProgress = nil;
     {
         return;
     }
-    SAFE_ARC_RELEASE(_scope);
     _scope = [scope copy];
 }
 
@@ -169,20 +140,17 @@ static dispatch_semaphore_t sInteractionInProgress = nil;
     {
         return;
     }
-    SAFE_ARC_RELEASE(_queryParams);
     _queryParams = [queryParams copy];
 }
 
 - (void)setUserIdentifier:(ADUserIdentifier *)identifier
 {
     CHECK_REQUEST_STARTED;
-    if (_identifier == identifier)
+    if ([_requestParams identifier] == identifier)
     {
         return;
     }
-    SAFE_ARC_RELEASE(_identifier);
-    _identifier = identifier;
-    SAFE_ARC_RETAIN(_identifier);
+    [_requestParams setIdentifier:identifier];
 }
 
 - (void)setUserId:(NSString *)userId
@@ -206,32 +174,25 @@ static dispatch_semaphore_t sInteractionInProgress = nil;
 - (void)setCorrelationId:(NSUUID*)correlationId
 {
     CHECK_REQUEST_STARTED;
-    if (_correlationId == correlationId)
+    if ([_requestParams correlationId] == correlationId)
     {
         return;
     }
-    SAFE_ARC_RELEASE(_correlationId);
-    _correlationId = correlationId;
-    SAFE_ARC_RETAIN(_correlationId);
+    [_requestParams setCorrelationId:correlationId];
 }
 
 #if AD_BROKER
 
 - (NSString*)redirectUri
 {
-    return _redirectUri;
+    return _requestParams.redirectUri;
 }
 
 - (void)setRedirectUri:(NSString *)redirectUri
 {
     // We knowingly do this mid-request when we have to change auth types
     // Thus no CHECK_REQUEST_STARTED
-    if (_redirectUri == redirectUri)
-    {
-        return;
-    }
-    SAFE_ARC_RELEASE(_redirectUri);
-    _redirectUri = [redirectUri copy];
+    [_requestParams setRedirectUri:redirectUri];
 }
 
 - (void)setAllowSilentRequests:(BOOL)allowSilent
@@ -246,8 +207,6 @@ static dispatch_semaphore_t sInteractionInProgress = nil;
     if (_refreshTokenCredential == refreshTokenCredential)
     {
         return;
-    }
-    SAFE_ARC_RELEASE(_refreshTokenCredential);
     _refreshTokenCredential = [refreshTokenCredential copy];
 }
 #endif
@@ -259,8 +218,6 @@ static dispatch_semaphore_t sInteractionInProgress = nil;
     {
         return;
     }
-    
-    SAFE_ARC_RELEASE(_samlAssertion);
     _samlAssertion = [samlAssertion copy];
 }
 
@@ -279,38 +236,82 @@ static dispatch_semaphore_t sInteractionInProgress = nil;
     }
     
     [self correlationId];
+    [self telemetryRequestId];
     
     _requestStarted = YES;
 }
 
 - (NSUUID*)correlationId
 {
-    if (_correlationId == nil)
+    if ([_requestParams correlationId] == nil)
     {
         //if correlationId is set in context, use it
         //if not, generate one
         if ([_context correlationId])
         {
-            _correlationId = [_context correlationId];
-            SAFE_ARC_RETAIN(_correlationId);
+            [_requestParams setCorrelationId:[_context correlationId]];
         } else {
-            _correlationId = [NSUUID UUID];
-            SAFE_ARC_RETAIN(_correlationId);
+            [_requestParams setCorrelationId:[NSUUID UUID]];
         }
     }
     
-    return _correlationId;
+    return [_requestParams correlationId];
 }
 
-- (BOOL)takeUserInterationLock
+- (NSString*)telemetryRequestId
 {
-    return !dispatch_semaphore_wait(sInteractionInProgress, DISPATCH_TIME_NOW);
+    if ([_requestParams telemetryRequestId] == nil)
+    {
+        [_requestParams setTelemetryRequestId:[[ADTelemetry sharedInstance] registerNewRequest]];
+    }
+    
+    return [_requestParams telemetryRequestId];
 }
 
-- (BOOL)releaseUserInterationLock
+- (ADRequestParameters*)requestParams
 {
-    dispatch_semaphore_signal(sInteractionInProgress);
+    return _requestParams;
+}
+
+/*!
+    Takes the UI interaction lock for the current request, will send an error
+    to completionBlock if it fails.
+ 
+    @param completionBlock  the ADAuthenticationCallback to send an error to if
+                            one occurs.
+ 
+    @return NO if we fail to take the exclusion lock
+ */
+- (BOOL)takeExclusionLock:(ADAuthenticationCallback)completionBlock
+{
+    THROW_ON_NIL_ARGUMENT(completionBlock);
+    if (dispatch_semaphore_wait(s_interactionLock, DISPATCH_TIME_NOW) != 0)
+    {
+        NSString* message = @"The user is currently prompted for credentials as result of another acquireToken request. Please retry the acquireToken call later.";
+        ADAuthenticationError* error = [ADAuthenticationError errorFromAuthenticationError:AD_ERROR_UI_MULTLIPLE_INTERACTIVE_REQUESTS
+                                                                              protocolCode:nil
+                                                                              errorDetails:message
+                                                                             correlationId:_requestParams.correlationId];
+        completionBlock([ADAuthenticationResult resultFromError:error]);
+        return NO;
+    }
+    
+    s_modalRequest = self;
     return YES;
+}
+
+/*!
+    Releases the exclusion lock
+ */
++ (void)releaseExclusionLock
+{
+    dispatch_semaphore_signal(s_interactionLock);
+    s_modalRequest = nil;
+}
+
++ (ADAuthenticationRequest*)currentModalRequest
+{
+    return s_modalRequest;
 }
 
 @end

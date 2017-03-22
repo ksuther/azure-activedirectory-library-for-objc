@@ -24,9 +24,14 @@
 @class ADWebRequest;
 @class ADWebResponse;
 
-@interface ADWebRequest : NSObject <NSURLConnectionDelegate>
+typedef void (^ADWebResponseCallback)(NSMutableDictionary *);
+
+@interface ADWebRequest : NSObject <NSURLSessionTaskDelegate, NSURLSessionDataDelegate>
 {
-    NSURLConnection * _connection;
+    NSURLSessionDataTask * _task;
+    
+    NSURLSessionConfiguration *_configuration;
+    NSURLSession *_session;
     
     NSURL * _requestURL;
     NSMutableDictionary* _requestHeaders;
@@ -39,9 +44,9 @@
     
     NSUInteger _timeout;
     
-    NSOperationQueue * _operationQueue;
-    
     BOOL _isGetRequest;
+    
+    NSString* _telemetryRequestId;
     
     void (^_completionHandler)( NSError *, ADWebResponse *);
 }
@@ -53,8 +58,11 @@
 @property BOOL isGetRequest;
 @property (readonly) NSUUID* correlationId;
 
-- (id)initWithURL: (NSURL*)url
-    correlationId: (NSUUID*) correlationId;
+@property (atomic, copy,   readonly) NSURLSessionConfiguration* configuration;
+@property (atomic, strong, readonly) NSURLSession *session;
+
+- (id)initWithURL:(NSURL *)url
+          context:(id<ADRequestContext>)context;
 
 - (void)send:( void (^)( NSError *, ADWebResponse *) )completionHandler;
 

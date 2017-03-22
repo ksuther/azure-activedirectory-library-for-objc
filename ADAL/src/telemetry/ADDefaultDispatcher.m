@@ -22,7 +22,7 @@
 // THE SOFTWARE.
 
 #import "ADTelemetry.h"
-#import "ADEventInterface.h"
+#import "ADTelemetryEventInterface.h"
 #import "ADDefaultDispatcher.h"
 
 @implementation ADDefaultDispatcher
@@ -43,65 +43,31 @@
         _dispatchLock = [NSLock new];
         
         _dispatcher = dispatcher;
-        SAFE_ARC_RETAIN(_dispatcher);
     }
     return self;
 }
 
-- (void)flush
+- (BOOL)containsDispatcher:(id<ADDispatcher>)dispatcher
 {
-    [_dispatchLock lock]; //avoid access conflict when manipulating _objectsToBeDispatched
-    NSMutableDictionary* objectsToBeDispatched = _objectsToBeDispatched;
-    _objectsToBeDispatched = [NSMutableDictionary new];
-    [_dispatchLock unlock];;
-    
-    for (NSString* requestId in objectsToBeDispatched)
-    {
-        NSArray* events = [objectsToBeDispatched objectForKey:requestId];
-        
-        for (id<ADEventInterface> event in events)
-        {
-            NSArray* properties = [event getProperties];
-            if (properties)
-            {
-                [_dispatcher dispatchEvent:properties];
-            }
-        }
-        
-        SAFE_ARC_RELEASE(objectsToBeDispatched);
-    }
+    return _dispatcher == dispatcher;
+}
+
+- (void)flush:(NSString*)requestId
+{
+    (void)requestId;
+    //default dispatcher does not cache any event
+    //so here is empty
 }
 
 - (void)receive:(NSString *)requestId
-          event:(id<ADEventInterface>)event
+          event:(id<ADTelemetryEventInterface>)event
 {
-    if ([NSString adIsStringNilOrBlank:requestId] || !event)
+    (void)requestId;
+    NSDictionary* properties = [event getProperties];
+    if (properties)
     {
-        return;
+        [_dispatcher dispatchEvent:properties];
     }
-    
-    [_dispatchLock lock]; //make sure no one changes _objectsToBeDispatched while using it
-    NSMutableArray* eventsForRequestId = [_objectsToBeDispatched objectForKey:requestId];
-    if (!eventsForRequestId)
-    {
-        eventsForRequestId = [NSMutableArray new];
-        [_objectsToBeDispatched setObject:eventsForRequestId forKey:requestId];
-    }
-    
-    [eventsForRequestId addObject:event];
-    [_dispatchLock unlock];
-}
-
-- (void)dealloc
-{
-    SAFE_ARC_RELEASE(_dispatcher);
-    _dispatcher = nil;
-    SAFE_ARC_RELEASE(_objectsToBeDispatched);
-    _objectsToBeDispatched = nil;
-    SAFE_ARC_RELEASE(_dispatchLock);
-    _dispatchLock = nil;
-    
-    SAFE_ARC_SUPER_DEALLOC();
 }
 
 @end

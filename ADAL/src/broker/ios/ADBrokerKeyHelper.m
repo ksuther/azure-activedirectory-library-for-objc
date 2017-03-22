@@ -30,6 +30,8 @@
 #import <Security/Security.h>
 #import "ADLogger+Internal.h"
 
+static NSData* s_symmetricKeyOverride = nil;
+
 @implementation ADBrokerKeyHelper
 
 enum {
@@ -96,7 +98,6 @@ static const uint8_t symmetricKeyIdentifier[]   = kSymmetricKeyTag;
       (id)kSecAttrCanDecrypt : @YES,
       (id)kSecValueData : keyData,
       };
-    SAFE_ARC_RELEASE(keyData);
     
     // First delete current symmetric key.
     if (![self deleteSymmetricKey:error])
@@ -144,7 +145,6 @@ static const uint8_t symmetricKeyIdentifier[]   = kSymmetricKeyTag;
         return NO;
     }
     
-    SAFE_ARC_RELEASE(_symmetricKey);
     _symmetricKey = nil;
     return YES;
 }
@@ -163,6 +163,11 @@ static const uint8_t symmetricKeyIdentifier[]   = kSymmetricKeyTag;
     if (_symmetricKey)
     {
         return _symmetricKey;
+    }
+    
+    if (s_symmetricKeyOverride)
+    {
+        return s_symmetricKeyOverride;
     }
     
     NSDictionary* symmetricKeyQuery =
@@ -214,7 +219,6 @@ static const uint8_t symmetricKeyIdentifier[]   = kSymmetricKeyTag;
         bzero(keyPtr, sizeof(keyPtr)); // fill with zeroes (for padding)
         // fetch key data
         [key getCString:keyPtr maxLength:sizeof(keyPtr) encoding:NSUTF8StringEncoding];
-        SAFE_ARC_RELEASE(key);
         keyBytes = keyPtr;
         keySize = kCCKeySizeAES256;
     }
@@ -269,14 +273,12 @@ static const uint8_t symmetricKeyIdentifier[]   = kSymmetricKeyTag;
 
 - (void)setSymmetricKey:(NSData *)symmetricKey
 {
-    if (symmetricKey == _symmetricKey)
-    {
-        return;
-    }
-    
-    SAFE_ARC_RELEASE(_symmetricKey);
     _symmetricKey = symmetricKey;
-    SAFE_ARC_RETAIN(_symmetricKey);
 }
 
-@end;
++ (void)setSymmetricKey:(NSString *)base64Key
+{
+    s_symmetricKeyOverride = base64Key ? [[NSData alloc] initWithBase64EncodedString:base64Key options:0] : nil;
+}
+
+@end

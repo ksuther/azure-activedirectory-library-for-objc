@@ -24,7 +24,8 @@
 #import <Foundation/Foundation.h>
 
 
-extern NSString* ADTestAppCacheChangeNotification;
+extern NSString *ADTestAppCacheChangeNotification;
+extern NSString *ADTestAppProfileChangedNotification;
 
 @interface ADTestAppSettings : NSObject
 
@@ -33,6 +34,8 @@ extern NSString* ADTestAppCacheChangeNotification;
 @property NSString* clientId;
 @property NSString* resource;
 @property NSString* defaultUser;
+@property BOOL validateAuthority;
+@property BOOL enableBroker;
 
 + (ADTestAppSettings*)settings;
 + (NSUInteger)numberOfProfiles;

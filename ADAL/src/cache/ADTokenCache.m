@@ -48,6 +48,7 @@
 #import "ADUserInformation.h"
 #import "ADTokenCache+Internal.h"
 #import "ADTokenCacheKey.h"
+#import "ADAuthenticationSettings.h"
 
 #include <pthread.h>
 
@@ -60,6 +61,18 @@
 }
 
 @implementation ADTokenCache
+
++ (ADTokenCache *)defaultCache
+{
+    static dispatch_once_t once;
+    static ADTokenCache * cache = nil;
+    
+    dispatch_once(&once, ^{
+        cache = [ADTokenCache new];
+    });
+    
+    return cache;
+}
 
 - (id)init
 {
@@ -75,14 +88,7 @@
 
 - (void)dealloc
 {
-    SAFE_ARC_RELEASE(_cache);
-    _cache = nil;
-    SAFE_ARC_RELEASE(_delegate);
-    _delegate = nil;
-    
     pthread_rwlock_destroy(&_lock);
-    
-    SAFE_ARC_SUPER_DEALLOC();
 }
 
 - (void)setDelegate:(nullable id<ADTokenCacheDelegate>)delegate
@@ -99,10 +105,7 @@
         return;
     }
     
-    SAFE_ARC_RELEASE(_delegate);
     _delegate = delegate;
-    SAFE_ARC_RETAIN(_delegate);
-    SAFE_ARC_RELEASE(_cache);
     _cache = nil;
     
     pthread_rwlock_unlock(&_lock);
@@ -136,7 +139,6 @@
     // Using the dictionary @{ key : value } syntax here causes _cache to leak. Yay legacy runtime!
     NSDictionary* wrapper = [NSDictionary dictionaryWithObjectsAndKeys:cacheCopy, @"tokenCache",
                              @CURRENT_WRAPPER_CACHE_VERSION, @"version", nil];
-    SAFE_ARC_RELEASE(cacheCopy);
     
     @try
     {
@@ -190,7 +192,6 @@
     // If they pass in nil on deserialize that means to drop the cache
     if (!data)
     {
-        SAFE_ARC_RELEASE(_cache);
         _cache = nil;
         return YES;
     }
@@ -206,9 +207,7 @@
         return NO;
     }
     
-    SAFE_ARC_RELEASE(_cache);
     _cache = [cache objectForKey:@"tokenCache"];
-    SAFE_ARC_RETAIN(_cache);
     return YES;
 }
 
@@ -221,7 +220,6 @@
         if (_cache)
         {
             AD_LOG_WARN(@"nil data provided to -updateCache, dropping old cache", nil, nil);
-            SAFE_ARC_RELEASE(_cache);
             _cache = nil;
         }
         else
@@ -240,9 +238,7 @@
         return NO;
     }
     
-    SAFE_ARC_RELEASE(_cache);
     _cache = [dict objectForKey:@"tokenCache"];
-    SAFE_ARC_RETAIN(_cache);
     
     return YES;
 }
@@ -259,7 +255,6 @@
         item = [item copy];
         
         [items addObject:item];
-        SAFE_ARC_RELEASE(item);
     }
 }
 
@@ -303,7 +298,6 @@
     }
     
     NSMutableArray* items = [NSMutableArray new];
-    SAFE_ARC_AUTORELEASE(items);
     
     if (userId)
     {
@@ -413,7 +407,6 @@
             [itemsKept addObject:item];
         }
     }
-    SAFE_ARC_AUTORELEASE(itemsKept);
     return itemsKept;
 }
 
@@ -421,6 +414,11 @@
 
 
 @implementation ADTokenCache (Internal)
+
+- (id<ADTokenCacheDelegate>)delegate
+{
+    return _delegate;
+}
 
 - (BOOL)validateCache:(NSDictionary*)dict
                 error:(ADAuthenticationError * __autoreleasing *)error
@@ -464,10 +462,10 @@
 #pragma mark ADTokenCacheAccessor Protocol Implementation
 
 /*! May return nil, if no cache item corresponds to the requested key
- @param key: The key of the item.
- @param user: The specific user whose item is needed. May be nil, in which
+ @param key The key of the item.
+ @param userId The specific user whose item is needed. May be nil, in which
  case the item for the first user in the cache will be returned.
- @param error: Will be set only in case of ambiguity. E.g. if userId is nil
+ @param error Will be set only in case of ambiguity. E.g. if userId is nil
  and we have tokens from multiple users. If the cache item is not present,
  the error will not be set. */
 - (ADTokenCacheItem *)getItemWithKey:(ADTokenCacheKey *)key
@@ -511,7 +509,7 @@
 /*! Extracts the key from the item and uses it to set the cache details. If another item with the
  same key exists, it will be overriden by the new one. 'getItemWithKey' method can be used to determine
  if an item already exists for the same key.
- @param error: in case of an error, if this parameter is not nil, it will be filled with
+ @param error in case of an error, if this parameter is not nil, it will be filled with
  the error details. */
 - (BOOL)addOrUpdateItem:(ADTokenCacheItem *)item
           correlationId:(NSUUID *)correlationId
@@ -547,7 +545,6 @@
     
     // Copy the item to make sure it doesn't change under us.
     item = [item copy];
-    SAFE_ARC_AUTORELEASE(item);
     
     ADTokenCacheKey* key = [item extractKey:error];
     if (!key)
@@ -563,7 +560,6 @@
         _cache = [NSMutableDictionary new];
         tokens = [NSMutableDictionary new];
         [_cache setObject:tokens forKey:@"tokens"];
-        SAFE_ARC_RELEASE(tokens);
     }
     else
     {
@@ -584,7 +580,6 @@
     {
         userDict = [NSMutableDictionary new];
         [tokens setObject:userDict forKey:userId];
-        SAFE_ARC_RELEASE(userDict);
     }
     
     [userDict setObject:item forKey:key];
@@ -625,7 +620,6 @@
             [tombstones addObject:item];
         }
     }
-    SAFE_ARC_AUTORELEASE(tombstones);
     return tombstones;
 }
 

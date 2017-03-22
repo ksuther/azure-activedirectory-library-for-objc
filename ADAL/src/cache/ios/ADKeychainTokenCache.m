@@ -75,7 +75,6 @@ static ADKeychainTokenCache* s_defaultCache = nil;
         return [self defaultKeychainCache];
     }
     ADKeychainTokenCache* cache = [[ADKeychainTokenCache alloc] initWithGroup:group];
-    SAFE_ARC_AUTORELEASE(cache);
     return cache;
 }
 
@@ -193,20 +192,16 @@ static ADKeychainTokenCache* s_defaultCache = nil;
                         userId:(NSString *)userId
                  correlationId:(NSUUID *)correlationId
 {
+    NSString* keyCtxStr = [NSString stringWithFormat:@"(resource <%@> + client <%@> + authority <%@>)", [key resource], [key clientId], [key authority]];
     if (!items || [items count]<=0)
     {
         //if resource is nil, this request is intending to find MRRT
-        if ([NSString adIsStringNilOrBlank:[key resource]]) {
-            AD_LOG_INFO_F(@"No MRRT found", correlationId, @"resource <%@> + client <%@> + authority <%@>", [key resource], [key clientId], [key authority]);
-        }
-        else
-        {
-            AD_LOG_INFO_F(@"No AT was found", correlationId, @"resource <%@> + client <%@> + authority <%@>", [key resource], [key clientId], [key authority]);
-        }
+        NSString* logStr = [NSString stringWithFormat:@"No items were found for query: %@", keyCtxStr];
+        AD_LOG_INFO(logStr, correlationId, nil);
     }
     else
     {
-        NSString* msg = [NSString stringWithFormat:@"Found %lu token(s)", (unsigned long)[items count]];
+        NSString* msg = [NSString stringWithFormat:@"Found %lu token(s) for query: %@", (unsigned long)[items count], keyCtxStr];
         AD_LOG_INFO_F(msg, correlationId, @"user <%@>", userId);
     }
 }
@@ -241,9 +236,13 @@ static ADKeychainTokenCache* s_defaultCache = nil;
             [tokenName stringByAppendingString:@"+RT"];
         }
     }
+    else if ([item.clientId hasPrefix:@"foci-"])
+    {
+        tokenName = @"FRT";
+    }
     else if (![NSString adIsStringNilOrBlank:item.refreshToken] && [NSString adIsStringNilOrBlank:item.resource])
     {
-        tokenName = @"MRRF";
+        tokenName = @"MRRT";
     }
     return tokenName;
 }
@@ -267,8 +266,6 @@ static ADKeychainTokenCache* s_defaultCache = nil;
     OSStatus status = SecItemCopyMatching((CFDictionaryRef)query, &items);
     if (status == errSecItemNotFound)
     {
-        // We don't want to print an error in this case as it's usually not actually an error.
-        AD_LOG_INFO(@"Nothing found in keychain.", nil, nil);
         return @[];
     }
     else if (status != errSecSuccess)
@@ -385,7 +382,6 @@ static ADKeychainTokenCache* s_defaultCache = nil;
             [itemsKept addObject:item];
         }
     }
-    SAFE_ARC_AUTORELEASE(itemsKept);
     return itemsKept;
 }
 
@@ -620,7 +616,6 @@ static ADKeychainTokenCache* s_defaultCache = nil;
     }
     
     NSMutableArray* tokenItems = [[NSMutableArray<ADTokenCacheItem *> alloc] initWithCapacity:items.count];
-    SAFE_ARC_AUTORELEASE(tokenItems);
     for (NSDictionary* attrs in items)
     {
         ADTokenCacheItem* item = [self itemFromKeychainAttributes:attrs];
@@ -782,7 +777,6 @@ static ADKeychainTokenCache* s_defaultCache = nil;
             [tombstones addObject:item];
         }
     }
-    SAFE_ARC_AUTORELEASE(tombstones);
     return tombstones;
 }
 

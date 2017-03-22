@@ -34,22 +34,13 @@
 @synthesize error = _error;
 @synthesize multiResourceRefreshToken = _multiResourceRefreshToken;
 @synthesize correlationId = _correlationId;
-//@synthesize extendedLifeTimeToken = _extendedLifeTimeToken; ADAL_RESILIENCY_NOT_YET
+@synthesize extendedLifeTimeToken = _extendedLifeTimeToken;
 
 - (id)init
 {
     //Ensure that the default init doesn't work:
     [super doesNotRecognizeSelector:_cmd];
     return nil;
-}
-
-- (void)dealloc
-{
-    SAFE_ARC_RELEASE(_tokenCacheItem);
-    SAFE_ARC_RELEASE(_error);
-    SAFE_ARC_RELEASE(_correlationId);
-    
-    SAFE_ARC_SUPER_DEALLOC();
 }
 
 /* Implements the accessToken property */

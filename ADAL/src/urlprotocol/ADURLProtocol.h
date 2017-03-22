@@ -25,28 +25,35 @@
 
 @class ADAuthenticationError;
 @class ADURLProtocol;
+@class ADTelemetryUIEvent;
+
+typedef void (^ChallengeCompletionHandler)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential);
 
 @protocol ADAuthMethodHandler
 
-+ (BOOL)handleChallenge:(NSURLAuthenticationChallenge*)challenge
-             connection:(NSURLConnection*)connection
-               protocol:(ADURLProtocol*)protocol;
++ (BOOL)handleChallenge:(NSURLAuthenticationChallenge *)challenge
+                session:(NSURLSession *)session
+                   task:(NSURLSessionTask *)task
+               protocol:(ADURLProtocol *)protocol
+      completionHandler:(ChallengeCompletionHandler)completionHandler;
+
 + (void)resetHandler;
 
 @end
 
 //Intercepts HTTPS protocol for the application in order to allow
 //NTLM with client-authentication. The class is not thread-safe.
-@interface ADURLProtocol : NSURLProtocol <NSURLConnectionDelegate, NSURLConnectionDataDelegate>
+@interface ADURLProtocol : NSURLProtocol <NSURLSessionTaskDelegate, NSURLSessionDataDelegate>
 {
-    NSURLConnection *_connection;
+    NSURLSessionDataTask *_dataTask;
     NSUUID *_correlationId;
 }
 
 + (void)registerHandler:(Class<ADAuthMethodHandler>)handler
              authMethod:(NSString *)authMethod;
 
-+ (BOOL)registerProtocol:(NSString*)endURL;
++ (BOOL)registerProtocol:(NSString*)endURL
+          telemetryEvent:(ADTelemetryUIEvent*)telemetryEvent;
 + (void)unregisterProtocol;
 
 + (void)addCorrelationId:(NSUUID *)correlationId

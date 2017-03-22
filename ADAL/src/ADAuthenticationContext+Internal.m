@@ -24,6 +24,7 @@
 #import "ADAuthenticationContext+Internal.h"
 #import "ADUserIdentifier.h"
 #import "ADTokenCacheItem+Internal.h"
+#import "ADHelpers.h"
 
 NSString* const ADUnknownError = @"Uknown error.";
 NSString* const ADCredentialsNeeded = @"The user credentials are needed to obtain access token. Please call the non-silent acquireTokenWithResource methods.";
@@ -34,16 +35,30 @@ NSString* const ADRedirectUriInvalidError = @"Your AuthenticationContext is conf
 
 @implementation ADAuthenticationContext (Internal)
 
-// ADAL_RESILIENCY_NOT_YET: Remove when feature goes into public API
-- (BOOL)extendedLifetimeEnabled
+- (id)initWithAuthority:(NSString *)authority
+      validateAuthority:(BOOL)validateAuthority
+             tokenCache:(id<ADTokenCacheDataSource>)tokenCache
+                  error:(ADAuthenticationError *__autoreleasing *)error
 {
-    return _extendedLifetimeEnabled;
-}
-
-// ADAL_RESILIENCY_NOT_YET: Remove when feature goes into public API
-- (void)setExtendedLifetimeEnabled:(BOOL)extendedLifetimeEnabled
-{
-    _extendedLifetimeEnabled = extendedLifetimeEnabled;
+    API_ENTRY;
+    if (!(self = [super init]))
+    {
+        return nil;
+    }
+    
+    NSString* extractedAuthority = [ADHelpers canonicalizeAuthority:authority];
+    if (!extractedAuthority)
+    {
+        RETURN_ON_INVALID_ARGUMENT(!extractedAuthority, authority, nil);
+    }
+    
+    _authority = extractedAuthority;
+    _validateAuthority = validateAuthority;
+    _credentialsType = AD_CREDENTIALS_EMBEDDED;
+    _extendedLifetimeEnabled = NO;
+    [self setTokenCacheStore:tokenCache];
+    
+    return self;
 }
 
 /*! Verifies that the string parameter is not nil or empty. If it is,
@@ -95,7 +110,6 @@ NSString* const ADRedirectUriInvalidError = @"Your AuthenticationContext is conf
         NSUUID* correlationId = [dictionary objectForKey:OAUTH2_CORRELATION_ID_RESPONSE] ?
                                 [[NSUUID alloc] initWithUUIDString:[dictionary objectForKey:OAUTH2_CORRELATION_ID_RESPONSE]]:
                                 nil;
-        SAFE_ARC_AUTORELEASE(correlationId);
         return [ADAuthenticationError OAuthServerError:serverOAuth2Error description:errorDetails code:errorCode correlationId:correlationId];
     }
     //In the case of more generic error, e.g. server unavailable, DNS error or no internet connection, the error object will be directly placed in the dictionary:

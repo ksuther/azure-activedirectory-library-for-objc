@@ -23,17 +23,18 @@
 
 typedef void(^ADAuthorizationCodeCallback)(NSString*, ADAuthenticationError*);
 
+extern NSString* kAdalResumeDictionaryKey;
+extern NSString* s_brokerAppVersion;
+extern NSString* s_brokerProtocolVersion;
+
 @interface ADAuthenticationRequest (Broker)
 
-+ (void)internalHandleBrokerResponse:(NSURL*)response;
++ (BOOL)internalHandleBrokerResponse:(NSURL*)response;
 
 + (BOOL)validBrokerRedirectUri:(NSString*)url;
 
 - (BOOL)canUseBroker;
 
-- (void)callBroker:(ADAuthenticationCallback)completionBlock;
-
-- (void)handleBrokerFromWebiewResponse:(NSString*)urlString
-                       completionBlock:(ADAuthenticationCallback)completionBlock;
+- (NSURL *)composeBrokerRequest:(ADAuthenticationError* __autoreleasing *)error;
 
 @end

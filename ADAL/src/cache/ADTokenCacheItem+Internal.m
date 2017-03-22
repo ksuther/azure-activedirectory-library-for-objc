@@ -53,7 +53,6 @@
         {
             AD_LOG_INFO_F(@"Correlation id mismatch", nil, @"Mismatch between the sent correlation id and the received one. Sent: %@; Received: %@", requestCorrelationId, responseId);
         }
-        SAFE_ARC_RELEASE(responseUUID);
     }
     else
     {
@@ -79,7 +78,7 @@
     if (!response)
     {
         ADAuthenticationError* error = [ADAuthenticationError errorFromAuthenticationError:AD_ERROR_UNEXPECTED
-                                                                              protocolCode:@"adal cachce"
+                                                                              protocolCode:nil
                                                                               errorDetails:@"processTokenResponse called without a response dictionary"
                                                                              correlationId:requestCorrelationId];
         return [ADAuthenticationResult resultFromError:error];
@@ -157,9 +156,7 @@
         expires = [NSDate dateWithTimeIntervalSinceNow:3600.0]; //Assume 1hr expiration
     }
     
-    SAFE_ARC_RELEASE(_expiresOn);
     _expiresOn = expires;
-    SAFE_ARC_RETAIN(_expiresOn);
     
     // convert ext_expires_in to ext_expires_on
     NSString* extendedExpiresIn = [responseDictionary valueForKey:@"ext_expires_in"];
@@ -172,18 +169,17 @@
     }
 }
 
-- (void)logWithCorrelationId:(NSString*)correlationId
-                        mrrt:(BOOL)isMRRT
+- (void)logMessage:(NSString *)message
+     correlationId:(NSString *)correlationId
+              mrrt:(BOOL)isMRRT
 {
     (void)isMRRT;
     
     NSUUID* correlationUUID = [[NSUUID alloc] initWithUUIDString:correlationId];
     
-    [self logMessage:nil
-               level:ADAL_LOG_LEVEL_VERBOSE
+    [self logMessage:message
+               level:ADAL_LOG_LEVEL_INFO
        correlationId:correlationUUID];
-    
-    SAFE_ARC_RELEASE(correlationUUID);
 }
 
 
@@ -221,10 +217,11 @@
     
     [self fillExpiration:responseDictionary];
     
-    [self logWithCorrelationId:[responseDictionary objectForKey:OAUTH2_CORRELATION_ID_RESPONSE] mrrt:isMRRT];
+    [self logMessage:@"Received"
+       correlationId:[responseDictionary objectForKey:OAUTH2_CORRELATION_ID_RESPONSE]
+                mrrt:isMRRT];
     
     // Store what we haven't cached to _additionalServer
-    SAFE_ARC_RELEASE(_additionalServer);
     _additionalServer = responseDictionary;
     
     return isMRRT;
@@ -250,10 +247,7 @@
     //wipe out the refresh token
     _refreshToken = @"<tombstone>";
     _tombstone = tombstoneDictionary;
-    SAFE_ARC_RELEASE(_expiresOn);
     _expiresOn = [NSDate dateWithTimeIntervalSinceNow:THIRTY_DAYS_IN_SECONDS];//tombstones should be removed after 30 days
-    SAFE_ARC_RETAIN(_expiresOn);
-
 }
 
 - (void)logMessage:(NSString*)message level:(ADAL_LOG_LEVEL)level correlationId:(NSUUID*)correlationId
@@ -312,28 +306,6 @@
          userInfo:nil
            format:@"{\n\tresource = %@\n\tclientId = %@\n\tauthority = %@\n\tuserId = %@\n}",
      _resource, _clientId, _authority, _userInformation.userId];
-}
-
-- (NSDictionary*)additionalServer
-{
-    return _additionalServer;
-}
-
-- (NSMutableDictionary*)additionalClient
-{
-    return _additionalClient;
-}
-
-- (void)setAdditionalClient:(NSMutableDictionary *)additionalClient
-{
-    if (_additionalClient == additionalClient)
-    {
-        return;
-    }
-    
-    SAFE_ARC_RELEASE(_additionalClient);
-    _additionalClient = additionalClient;
-    SAFE_ARC_RETAIN(_additionalClient);
 }
 
 - (BOOL)isExtendedLifetimeValid

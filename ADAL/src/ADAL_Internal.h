@@ -26,8 +26,8 @@
 // (Note: All Info.plist files read version numbers from the following three lines
 // through build script. Don't change its format unless changing build script as well.)
 #define ADAL_VER_HIGH       2
-#define ADAL_VER_LOW        2
-#define ADAL_VER_PATCH      6
+#define ADAL_VER_LOW        4
+#define ADAL_VER_PATCH      0
 
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
@@ -56,7 +56,7 @@
 
 /*! The completion block declaration. */
 typedef void(^ADAuthenticationCallback)(ADAuthenticationResult* result);
-
+typedef void(^ADAuthorizationCodeCallback)(NSString*, ADAuthenticationError*);
 
 #if TARGET_OS_IPHONE
 //iOS:
@@ -67,6 +67,7 @@ typedef UIWebView WebViewType;
 #   include <WebKit/WebKit.h>
 typedef WebView   WebViewType;
 #endif
+
 
 #import "ADAuthenticationRequest.h"
 
@@ -153,17 +154,3 @@ ADAL_VERSION; \
 AD_LOG_VERBOSE(__adalVersion, nil, __where); \
 }
 
-#if __has_feature(objc_arc)
-#define __WEAK __weak
-#define SAFE_ARC_RETAIN(x)
-#define SAFE_ARC_RELEASE(x)
-#define SAFE_ARC_AUTORELEASE(x)
-#define SAFE_ARC_SUPER_DEALLOC()
-
-#else // ! __has_feature(objc_arc)
-#define __WEAK
-#define SAFE_ARC_RETAIN(x) ([(x) retain])
-#define SAFE_ARC_RELEASE(x) { [(x) release]; }
-#define SAFE_ARC_AUTORELEASE(x) ([(x) autorelease])
-#define SAFE_ARC_SUPER_DEALLOC() ([super dealloc])
-#endif

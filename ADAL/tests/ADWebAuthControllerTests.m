@@ -60,11 +60,8 @@
     
     NSAssert(context, @"If this is failing for whatever reason you should probably fix it before trying to run tests.");
     ADTokenCache *tokenCache = [ADTokenCache new];
-    SAFE_ARC_AUTORELEASE(tokenCache);
     [context setTokenCacheStore:tokenCache];
     [context setCorrelationId:TEST_CORRELATION_ID];
-    
-    SAFE_ARC_AUTORELEASE(context);
     
     return context;
 }
@@ -78,6 +75,9 @@
     [ADTestAuthenticationViewController addDelegateCallWebAuthShouldStartLoadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"about:blank"]]];
     [ADTestAuthenticationViewController addDelegateCallWebAuthShouldStartLoadRequest:[NSURLRequest requestWithURL:TEST_REDIRECT_URL]];
 
+    ADRequestParameters* requestParams = [ADRequestParameters new];
+    [requestParams setCorrelationId:[NSUUID new]];
+    
     [controller start:[NSURL URLWithString:TEST_AUTHORITY]
                   end:TEST_REDIRECT_URL
           refreshCred:nil
@@ -85,8 +85,8 @@
                parent:nil
            fullScreen:false
 #endif
-            webView:nil
-        correlationId:[NSUUID new]
+              webView:nil
+              context:requestParams
            completion:^(ADAuthenticationError *error, NSURL *url) {
                
                XCTAssertNil(error);
@@ -108,6 +108,9 @@
     [ADTestAuthenticationViewController addDelegateCallWebAuthShouldStartLoadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:TEST_AUTHORITY]]];
     [ADTestAuthenticationViewController addDelegateCallWebAuthShouldStartLoadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"http://abc.com"]]];
     
+    ADRequestParameters* requestParams = [ADRequestParameters new];
+    [requestParams setCorrelationId:[NSUUID new]];
+    
     [controller start:[NSURL URLWithString:TEST_AUTHORITY]
                   end:TEST_REDIRECT_URL
           refreshCred:nil
@@ -116,7 +119,7 @@
            fullScreen:false
 #endif
               webView:nil
-        correlationId:[NSUUID new]
+              context:requestParams
            completion:^(ADAuthenticationError *error, NSURL *url) {
                
                //Should fail with AD_ERROR_NON_HTTPS_REDIRECT error

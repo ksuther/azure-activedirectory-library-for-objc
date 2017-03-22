@@ -45,8 +45,6 @@
     identifier->_userId = [ADUserInformation normalizeUserId:userId];
     identifier->_type = DEFAULT_USER_TYPE;
     
-    SAFE_ARC_AUTORELEASE(identifier);
-    
     return identifier;
 }
 
@@ -62,8 +60,6 @@
     identifier->_userId = [ADUserInformation normalizeUserId:userId];
     identifier->_type = type;
     
-    SAFE_ARC_AUTORELEASE(identifier);
-    
     return identifier;
 }
 
@@ -78,8 +74,6 @@
     
     identifier->_userId = [ADUserInformation normalizeUserId:userId];
     identifier->_type = [ADUserIdentifier typeFromString:type];
-    
-    SAFE_ARC_AUTORELEASE(identifier);
     
     return identifier;
 }
@@ -110,6 +104,20 @@
     }
     
     return NO;
+}
+
+- (id)copyWithZone:(NSZone*)zone
+{
+    ADUserIdentifier* identifier = [[ADUserIdentifier allocWithZone:zone] init];
+    if (!identifier)
+    {
+        return nil;
+    }
+    
+    identifier->_type = _type;
+    identifier->_userId = [_userId copyWithZone:zone];
+    
+    return identifier;
 }
 
 - (NSString*)userIdMatchString:(ADUserInformation*)info
