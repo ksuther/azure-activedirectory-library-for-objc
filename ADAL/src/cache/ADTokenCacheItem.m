@@ -42,8 +42,9 @@
 {
     // This class was named "ADTokenCacheStoreItem" in ADAL 1.x, to maintain backwards compatibility
     // we set class name mappings for this class.
-    [NSKeyedArchiver setClassName:@"ADTokenCacheStoreItem" forClass:self];
-    [NSKeyedUnarchiver setClass:self forClassName:@"ADTokenCacheStoreItem"];
+    // This is crashing on 10.13 as of beta 3
+    //[NSKeyedArchiver setClassName:@"ADTokenCacheStoreItem" forClass:self];
+    //[NSKeyedUnarchiver setClass:self forClassName:@"ADTokenCacheStoreItem"];
 }
 
 - (NSUInteger)hash
