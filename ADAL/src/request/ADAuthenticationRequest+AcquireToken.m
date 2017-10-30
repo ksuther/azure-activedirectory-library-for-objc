@@ -35,6 +35,7 @@
 #import "ADTelemetryBrokerEvent.h"
 #import "ADTelemetryEventStrings.h"
 #import "ADBrokerHelper.h"
+#import "NSDictionary+ADExtensions.h"
 
 @implementation ADAuthenticationRequest (AcquireToken)
 
@@ -92,7 +93,7 @@
         }
         [event setResultStatus:result.status];
         [event setIsExtendedLifeTimeToken:[result extendedLifeTimeToken]? AD_TELEMETRY_VALUE_YES:AD_TELEMETRY_VALUE_NO];
-        [event setErrorCode:[NSString stringWithFormat:@"%ld",(long)[result.error code]]];
+        [event setErrorCode:[result.error code]];
         [event setErrorDomain:[result.error domain]];
         [event setProtocolCode:[[result error] protocolCode]];
         
@@ -103,7 +104,7 @@
         completionBlock(result);
     };
     
-    if (!_silent && ![NSThread isMainThread])
+    if (_samlAssertion == nil && !_silent && ![NSThread isMainThread])
     {
         ADAuthenticationError* error =
         [ADAuthenticationError errorFromAuthenticationError:AD_ERROR_UI_NOT_ON_MAIN_THREAD
@@ -122,6 +123,13 @@
                                                protocolCode:nil
                                                errorDetails:@"extraQueryParameters is not properly encoded. Please make sure it is URL encoded."
                                               correlationId:_requestParams.correlationId];
+        wrappedCallback([ADAuthenticationResult resultFromError:error correlationId:_requestParams.correlationId]);
+        return;
+    }
+    
+    ADAuthenticationError *error = nil;
+    if (![self checkClaims:&error])
+    {
         wrappedCallback([ADAuthenticationResult resultFromError:error correlationId:_requestParams.correlationId]);
         return;
     }
@@ -183,11 +191,53 @@
     return url!=nil;
 }
 
+- (BOOL)checkClaims:(ADAuthenticationError *__autoreleasing *)error
+{
+    if ([NSString adIsStringNilOrBlank:_claims])
+    {
+        return YES;
+    }
+    
+    // Make sure claims is not in EQP
+    NSDictionary *queryParamsDict = [NSDictionary adURLFormDecode:_queryParams];
+    if (queryParamsDict[@"claims"])
+    {
+        if (error)
+        {
+            *error = [ADAuthenticationError errorFromAuthenticationError:AD_ERROR_DEVELOPER_INVALID_ARGUMENT
+                                                            protocolCode:nil
+                                                            errorDetails:@"Duplicate claims parameter is found in extraQueryParameters. Please remove it."
+                                                           correlationId:_requestParams.correlationId];
+        }
+        return NO;
+    }
+    
+    // Make sure claims is properly encoded
+    NSString* claimsParams = _claims.adTrimmedString;
+    NSURL* url = [NSURL URLWithString:[NSMutableString stringWithFormat:@"%@?claims=%@", _context.authority, claimsParams]];
+    if (!url)
+    {
+        if (error)
+        {
+            *error = [ADAuthenticationError errorFromAuthenticationError:AD_ERROR_DEVELOPER_INVALID_ARGUMENT
+                                                            protocolCode:nil
+                                                            errorDetails:@"claims is not properly encoded. Please make sure it is URL encoded."
+                                                           correlationId:_requestParams.correlationId];
+        }
+        return NO;
+    }
+    
+    // Always skip cache if claims parameter is not nil/empty
+    _skipCache = YES;
+    
+    return YES;
+}
+
 - (void)validatedAcquireToken:(ADAuthenticationCallback)completionBlock
 {
     [self ensureRequest];
     
-    if (![ADAuthenticationContext isForcedAuthorization:_promptBehavior] && [_context hasCacheStore])
+    if (![ADAuthenticationContext isForcedAuthorization:_promptBehavior] && !_skipCache && [_context hasCacheStore])
     {
         [[ADTelemetry sharedInstance] startEvent:[self telemetryRequestId] eventName:AD_TELEMETRY_EVENT_ACQUIRE_TOKEN_SILENT];
         ADAcquireTokenSilentHandler* request = [ADAcquireTokenSilentHandler requestWithParams:_requestParams];
@@ -219,7 +269,17 @@
     
     if (_samlAssertion)
     {
-        [self requestTokenByAssertion:completionBlock];
+        [self requestTokenByAssertion:^(ADAuthenticationResult *result){
+            if (AD_SUCCEEDED == result.status)
+            {
+                [[_requestParams tokenCache] updateCacheToResult:result
+                                                       cacheItem:nil
+                                                    refreshToken:nil
+                                                         context:_requestParams];
+                result = [ADAuthenticationContext updateResult:result toUser:[_requestParams identifier]];
+            }
+            completionBlock(result);
+        }];
         return;
     }
 
@@ -260,24 +320,23 @@
         }
     }
     
-    if (![self takeExclusionLock:completionBlock])
-    {
-        return;
-    }
-    
-    [self requestTokenImpl:^(ADAuthenticationResult *result)
-    {
-        [ADAuthenticationRequest releaseExclusionLock];
-        completionBlock(result);
-    }];
+    [self requestTokenImpl:completionBlock];
 }
 
 - (void)requestTokenImpl:(ADAuthenticationCallback)completionBlock
 {
-#if !AD_BROKER && TARGET_OS_IPHONE
+#if TARGET_OS_IPHONE
     //call the broker.
     if ([self canUseBroker])
     {
+        
+#if !AD_BROKER
+        if (![self takeExclusionLock:completionBlock])
+        {
+            return;
+        }
+#endif
+        
         ADAuthenticationError* error = nil;
         NSURL* brokerURL = [self composeBrokerRequest:&error];
         if (!brokerURL)
@@ -296,17 +355,35 @@
              [event setBrokerAppVersion:s_brokerAppVersion];
              [event setBrokerProtocolVersion:s_brokerProtocolVersion];
              [[ADTelemetry sharedInstance] stopEvent:[self telemetryRequestId] event:event];
+
+#if !AD_BROKER
+             [ADAuthenticationRequest releaseExclusionLock];
+#endif
+
              completionBlock(result);
          }];
         return;
     }
 #endif
-    
+
+    if (![self takeExclusionLock:completionBlock])
+    {
+        return;
+    }
+
+    // Always release the exclusion lock on completion
+    ADAuthenticationCallback originalCompletionBlock = completionBlock;
+    completionBlock = ^(ADAuthenticationResult* result)
+    {
+        [ADAuthenticationRequest releaseExclusionLock];
+        originalCompletionBlock(result);
+    };
+
     __block BOOL silentRequest = _allowSilent;
     
     NSString* telemetryRequestId = [_requestParams telemetryRequestId];
     
-// Get the code first:
+    // Get the code first:
     [[ADTelemetry sharedInstance] startEvent:telemetryRequestId eventName:AD_TELEMETRY_EVENT_AUTHORIZATION_CODE];
     [self requestCode:^(NSString * code, ADAuthenticationError *error)
      {

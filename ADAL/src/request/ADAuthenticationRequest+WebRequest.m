@@ -60,6 +60,8 @@
                                                          fromRefresh:NO
                                                 requestCorrelationId:[_requestParams correlationId]];
          completionBlock(result);
+         
+         [req invalidate];
      }];
 }
 
@@ -131,6 +133,12 @@
         {
             [startUrl appendFormat:@"&%@", queryParams];
         }
+    }
+    
+    if (![NSString adIsStringNilOrBlank:_claims])
+    {
+        NSString *claimsParam = _claims.adTrimmedString;
+        [startUrl appendFormat:@"&claims=%@", claimsParam];
     }
     
     return startUrl;
@@ -237,11 +245,17 @@
                        [_requestParams redirectUri], OAUTH2_REDIRECT_URI,
                        [_requestParams resource], OAUTH2_RESOURCE,
                        OAUTH2_CODE, OAUTH2_RESPONSE_TYPE,
-					   @"1", @"nux", nil];
+                       @"1", @"nux",
+                       @"none", @"prompt", nil];
         
         if (_scope)
         {
             [requestData setObject:_scope forKey:OAUTH2_SCOPE];
+        }
+        
+        if ([_requestParams identifier] && [[_requestParams identifier] isDisplayable] && ![NSString adIsStringNilOrBlank:[_requestParams identifier].userId])
+        {
+            [requestData setObject:_requestParams.identifier.userId forKey:OAUTH2_LOGIN_HINT];
         }
         
         NSURL* reqURL = [NSURL URLWithString:[_context.authority stringByAppendingString:OAUTH2_AUTHORIZE_SUFFIX]];
@@ -272,6 +286,7 @@
              }
              
              requestCompletion(error, endURL);
+             [req invalidate];
          }];
     }
 }

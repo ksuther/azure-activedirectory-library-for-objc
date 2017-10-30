@@ -60,6 +60,14 @@ NSString* kAdalResumeDictionaryKey = @"adal-broker-resume-dictionary";
     (void)s_brokerAppVersion;
     (void)s_brokerProtocolVersion;
     
+#if AD_BROKER
+    // Allow the broker app to use a special redirect URI when acquiring tokens
+    if ([url isEqualToString:ADAL_BROKER_APP_REDIRECT_URI])
+    {
+        return YES;
+    }
+#endif
+    
     NSArray* urlTypes = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleURLTypes"];
     
     NSURL* redirectURI = [NSURL URLWithString:url];
@@ -177,7 +185,9 @@ NSString* kAdalResumeDictionaryKey = @"adal-broker-resume-dictionary";
         return nil;
     }
     
-    NSString *qp = [response query];
+    // NSURLComponents resolves some URLs which can't get resolved by NSURL
+    NSURLComponents* components = [NSURLComponents componentsWithURL:response resolvingAgainstBaseURL:NO];
+    NSString *qp = [components percentEncodedQuery];
     //expect to either response or error and description, AND correlation_id AND hash.
     NSDictionary* queryParamsMap = [NSDictionary adURLFormDecode:qp];
     
@@ -208,7 +218,7 @@ NSString* kAdalResumeDictionaryKey = @"adal-broker-resume-dictionary";
     //decrypt response first
     ADBrokerKeyHelper* brokerHelper = [[ADBrokerKeyHelper alloc] init];
     ADAuthenticationError* decryptionError = nil;
-    NSData *encryptedResponse = [NSString adBase64DecodeData:encryptedBase64Response ];
+    NSData *encryptedResponse = [NSString adBase64UrlDecodeData:encryptedBase64Response ];
     NSData* decrypted = [brokerHelper decryptBrokerResponse:encryptedResponse
                                                     version:protocolVersion
                                                       error:&decryptionError];
@@ -280,7 +290,7 @@ NSString* kAdalResumeDictionaryKey = @"adal-broker-resume-dictionary";
     NSData* key = [brokerHelper getBrokerKey:error];
     AUTH_ERROR_RETURN_IF_NIL(key, AD_ERROR_UNEXPECTED, @"Unable to retrieve broker key.", _requestParams.correlationId);
     
-    NSString* base64Key = [NSString adBase64EncodeData:key];
+    NSString* base64Key = [NSString adBase64UrlEncodeData:key];
     AUTH_ERROR_RETURN_IF_NIL(base64Key, AD_ERROR_UNEXPECTED, @"Unable to base64 encode broker key.", _requestParams.correlationId);
     NSString* base64UrlKey = [base64Key adUrlFormEncode];
     AUTH_ERROR_RETURN_IF_NIL(base64UrlKey, AD_ERROR_UNEXPECTED, @"Unable to URL encode broker key.", _requestParams.correlationId);
@@ -298,6 +308,7 @@ NSString* kAdalResumeDictionaryKey = @"adal-broker-resume-dictionary";
       @"username_type"  : _requestParams.identifier ? [_requestParams.identifier typeAsString] : @"",
       @"username"       : _requestParams.identifier.userId ? _requestParams.identifier.userId : @"",
       @"force"          : _promptBehavior == AD_FORCE_PROMPT ? @"YES" : @"NO",
+      @"skip_cache"     : _skipCache ? @"YES" : @"NO",
       @"correlation_id" : _requestParams.correlationId,
 #if TARGET_OS_IPHONE // Broker Message Encryption
       @"broker_key"     : base64UrlKey,
@@ -305,6 +316,7 @@ NSString* kAdalResumeDictionaryKey = @"adal-broker-resume-dictionary";
       @"client_version" : adalVersion,
       BROKER_MAX_PROTOCOL_VERSION : @"2",
       @"extra_qp"       : _queryParams ? _queryParams : @"",
+      @"claims"         : _claims ? _claims : @"",
       };
     
     NSDictionary<NSString *, NSString *>* resumeDictionary = nil;

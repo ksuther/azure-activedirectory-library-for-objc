@@ -148,6 +148,8 @@
          result = [ADAuthenticationContext updateResult:result toUser:[_requestParams identifier]];//Verify the user (just in case)
          
          completionBlock(result);
+         
+         [webReq invalidate];
      }];
 }
 
@@ -460,7 +462,7 @@
         return NO;
     }
     
-    return ([result.error code] == 500 || [result.error code] == 503 || [result.error code] == 504);
+    return ([result.error code] >= 500 && [result.error code] <= 599);
 }
 
 @end

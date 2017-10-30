@@ -33,6 +33,20 @@
 
 @implementation ADNTLMUIPrompt
 
+__weak static NSAlert *_presentedPrompt = nil;
+
++ (void)dismissPrompt
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        
+        if (_presentedPrompt)
+        {
+            [_presentedPrompt.window.sheetParent endSheet:_presentedPrompt.window];
+            _presentedPrompt = nil;
+        }
+    });
+}
+
 + (void)presentPrompt:(void (^)(NSString * username, NSString * password))completionHandler
 {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -47,14 +61,6 @@
         [view.passwordLabel setStringValue:NSLocalizedString(@"Password", nil)];
         [alert setAccessoryView:view.customView];
         
-        [view.usernameField setNextKeyView:view.passwordField];
-        [view.passwordField setNextKeyView:cancelButton];
-        [cancelButton setNextKeyView:loginButton];
-        [loginButton setNextKeyView:view.usernameField];
-        
-        // TODO: NSAlert some time after this overides the keyview loop so that
-        // it gets stuck between loginButton and cancel button.To fix this bug
-        // we'll have to ditch NSAlert entirely. (#851)
         [[alert window] setInitialFirstResponder:view.usernameField];
         
         [alert beginSheetModalForWindow:[NSApp keyWindow] completionHandler:^(NSModalResponse returnCode)
@@ -71,6 +77,13 @@
                  completionHandler(nil, nil);
              }
          }];
+        
+        _presentedPrompt = alert;
+        
+        [view.usernameField setNextKeyView:view.passwordField];
+        [view.passwordField setNextKeyView:cancelButton];
+        [cancelButton setNextKeyView:loginButton];
+        [loginButton setNextKeyView:view.usernameField];
     });
 }
 

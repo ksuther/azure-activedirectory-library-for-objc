@@ -167,7 +167,7 @@ NSString* ADWebAuthWillSwitchToBrokerApp = @"ADWebAuthWillSwitchToBrokerApp";
     ADAuthenticationError* adError = nil;
     NSString* authHeader = [ADPkeyAuthHelper createDeviceAuthResponse:authority
                                                         challengeData:queryParamsMap
-                                                        correlationId:_requestParams.correlationId
+                                                              context:_requestParams
                                                                 error:&adError];
     if (!authHeader)
     {
@@ -176,9 +176,9 @@ NSString* ADWebAuthWillSwitchToBrokerApp = @"ADWebAuthWillSwitchToBrokerApp";
     }
     
     NSMutableURLRequest* responseUrl = [[NSMutableURLRequest alloc]initWithURL:[NSURL URLWithString:value]];
-    [ADURLProtocol addCorrelationId:_requestParams.correlationId toRequest:responseUrl];
+    [ADURLProtocol addContext:_requestParams toRequest:responseUrl];
     
-    [responseUrl setValue:pKeyAuthHeaderVersion forHTTPHeaderField: pKeyAuthHeader];
+    [responseUrl setValue:kADALPKeyAuthHeaderVersion forHTTPHeaderField:kADALPKeyAuthHeader];
     [responseUrl setValue:authHeader forHTTPHeaderField:@"Authorization"];
     [_authenticationViewController loadRequest:responseUrl];
 }
@@ -274,14 +274,14 @@ NSString* ADWebAuthWillSwitchToBrokerApp = @"ADWebAuthWillSwitchToBrokerApp";
     if ([[[request.URL scheme] lowercaseString] isEqualToString:@"browser"])
     {
         _complete = YES;
+        requestURL = [requestURL stringByReplacingOccurrencesOfString:@"browser://" withString:@"https://"];
+        
 #if TARGET_OS_IPHONE
         if (![ADAppExtensionUtil isExecutingInAppExtension])
         {
             dispatch_async( dispatch_get_main_queue(), ^{
                 [self webAuthDidCancel];
             });
-            
-            requestURL = [requestURL stringByReplacingOccurrencesOfString:@"browser://" withString:@"https://"];
             
             dispatch_async( dispatch_get_main_queue(), ^{
                 [ADAppExtensionUtil sharedApplicationOpenURL:[[NSURL alloc] initWithString:requestURL]];
@@ -292,7 +292,7 @@ NSString* ADWebAuthWillSwitchToBrokerApp = @"ADWebAuthWillSwitchToBrokerApp";
             AD_LOG_ERROR(@"unable to redirect to browser from extension", AD_ERROR_SERVER_UNSUPPORTED_REQUEST, _requestParams.correlationId, nil);
         }
 #else // !TARGET_OS_IPHONE
-        AD_LOG_ERROR(@"server is redirecting us to browser, this behavior is not defined on Mac OS X yet", AD_ERROR_SERVER_UNSUPPORTED_REQUEST, _requestParams.correlationId, nil);
+        [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:requestURL]];
 #endif // TARGET_OS_IPHONE
         return NO;
     }
@@ -324,7 +324,7 @@ NSString* ADWebAuthWillSwitchToBrokerApp = @"ADWebAuthWillSwitchToBrokerApp";
     }
     
     // check for pkeyauth challenge.
-    if ([requestURL hasPrefix:pKeyAuthUrn])
+    if ([requestURL hasPrefix:kADALPKeyAuthUrn])
     {
         // We still continue onwards from a pkeyauth challenge after it's handled, so the web auth flow
         // is not complete yet.
@@ -345,7 +345,7 @@ NSString* ADWebAuthWillSwitchToBrokerApp = @"ADWebAuthWillSwitchToBrokerApp";
     
     if ([request isKindOfClass:[NSMutableURLRequest class]])
     {
-        [ADURLProtocol addCorrelationId:_requestParams.correlationId toRequest:(NSMutableURLRequest*)request];
+        [ADURLProtocol addContext:_requestParams toRequest:(NSMutableURLRequest*)request];
     }
     
     return YES;
@@ -400,7 +400,7 @@ NSString* ADWebAuthWillSwitchToBrokerApp = @"ADWebAuthWillSwitchToBrokerApp";
         }
         
         // check for pkeyauth challenge.
-        if ([urlString hasPrefix:pKeyAuthUrn])
+        if ([urlString hasPrefix:kADALPKeyAuthUrn])
         {
             // We still continue onwards from a pkeyauth challenge after it's handled, so the web auth flow
             // is not complete yet.
@@ -568,8 +568,9 @@ static ADAuthenticationResult* s_result = nil;
     }
     
     NSMutableURLRequest* request = [[NSMutableURLRequest alloc] initWithURL:[ADHelpers addClientVersionToURL:startURL]];
-    [ADURLProtocol addCorrelationId:_requestParams.correlationId toRequest:request];
-    
+
+    [ADURLProtocol addContext:_requestParams toRequest:request];
+
     [_authenticationViewController startRequest:request];
 }
 

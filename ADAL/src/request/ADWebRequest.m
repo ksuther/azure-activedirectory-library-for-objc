@@ -49,12 +49,11 @@
 #pragma mark - Properties
 
 @synthesize URL      = _requestURL;
-@synthesize headers  = _requestHeaders;
 @synthesize timeout  = _timeout;
 @synthesize isGetRequest = _isGetRequest;
 @synthesize correlationId = _correlationId;
+@synthesize telemetryRequestId = _telemetryRequestId;
 @synthesize session = _session;
-@synthesize configuration = _configuration;
 
 - (NSData *)body
 {
@@ -98,8 +97,8 @@
     
     _telemetryRequestId = context.telemetryRequestId;
     
-    _configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
-    _session = [NSURLSession sessionWithConfiguration:_configuration delegate:self delegateQueue:nil];
+    NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
+    _session = [NSURLSession sessionWithConfiguration:configuration delegate:self delegateQueue:nil];
     
     return self;
 }
@@ -163,12 +162,17 @@
     request.allHTTPHeaderFields = _requestHeaders;
     request.HTTPBody            = _requestData;
     
-    [ADURLProtocol addCorrelationId:_correlationId toRequest:request];
+    [ADURLProtocol addContext:self toRequest:request];
     
     _task = [_session dataTaskWithRequest:request];
     [_task resume];
 }
 
+- (void)invalidate
+{
+    [_session finishTasksAndInvalidate];
+    _completionHandler = nil;
+}
 
 #pragma mark - NSURLSession delegates
 - (void)URLSession:(NSURLSession *)session didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition, NSURLCredential * _Nullable))completionHandler
@@ -235,7 +239,7 @@
     }
 
     NSMutableURLRequest* mutableRequest = [NSMutableURLRequest requestWithURL:modifiedURL];
-    [ADURLProtocol addCorrelationId:_correlationId toRequest:mutableRequest];
+    [ADURLProtocol addContext:self toRequest:mutableRequest];
     
     completionHandler(mutableRequest);
   
@@ -245,7 +249,7 @@
                   response:(ADWebResponse *)response
 {
     ADTelemetryHttpEvent* event = [[ADTelemetryHttpEvent alloc] initWithName:AD_TELEMETRY_EVENT_HTTP_REQUEST requestId:_telemetryRequestId correlationId:_correlationId];
-
+    
     [event setHttpMethod:_isGetRequest ? @"GET" : @"POST"];
     [event setHttpPath:[NSString stringWithFormat:@"%@://%@/%@", _requestURL.scheme, _requestURL.host, _requestURL.path]];
     [event setHttpRequestIdHeader:[response.headers objectForKey:OAUTH2_CORRELATION_ID_REQUEST_VALUE]];
@@ -258,7 +262,7 @@
     {
         [event setHttpResponseCode:[NSString stringWithFormat: @"%ld", (long)[response statusCode]]];
     }
-
+    
     [event setOAuthErrorCode:response];
     
     [event setHttpRequestQueryParams:_requestURL.query];
@@ -266,4 +270,13 @@
     [[ADTelemetry sharedInstance] stopEvent:_telemetryRequestId event:event];
 }
 
+- (void)addToHeadersFromDictionary:(NSDictionary *)headers
+{
+    [_requestHeaders addEntriesFromDictionary:headers];
+}
+
+- (void) setAuthorizationHeader:(NSString *)header
+{
+    [_requestHeaders setObject:header forKey:@"Authorization"];
+}
 @end

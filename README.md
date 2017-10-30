@@ -1,6 +1,9 @@
 
-#Microsoft Azure Active Directory Authentication Library (ADAL) for iOS and OSX
+# Microsoft Azure Active Directory Authentication Library (ADAL) for iOS and OSX
 =====================================
+
+| [Code Samples](https://github.com/azure-samples?utf8=✓&q=active-directory-ios) | [Reference Docs](http://cocoadocs.org/docsets/ADAL/) | [Developer Guide](https://aka.ms/aaddev)
+| --- | --- | --- |
 
 ## Release Versions
 
@@ -25,7 +28,7 @@ The ADAL SDK for iOS and Mac OS X gives you the ability to add support for Work 
 
 ## Samples and Documentation
 
-We provide a full suite of [sample applications](https://github.com/AzureADSamples) and [documentation](http://cocoadocs.org/docsets/ADAL/2.2.6/) on GitHub to help you get started with learning the Azure Identity system. This includes tutorials for native clients such as Windows, Windows Phone, iOS, OSX, Android, and Linux. We also provide full walkthroughs for authentication flows such as OAuth2, OpenID Connect, Graph API, and other awesome features. 
+We provide a full suite of [sample applications](https://github.com/AzureADSamples) and [documentation](http://cocoadocs.org/docsets/ADAL/) on GitHub to help you get started with learning the Azure Identity system. This includes tutorials for native clients such as Windows, Windows Phone, iOS, OSX, Android, and Linux. We also provide full walkthroughs for authentication flows such as OAuth2, OpenID Connect, Graph API, and other awesome features. 
 
 Azure Identity samples for iOS is here: [https://github.com/AzureADSamples/NativeClient-iOS](https://github.com/AzureADSamples/NativeClient-iOS)
 
@@ -34,6 +37,12 @@ Azure Identity samples for iOS is here: [https://github.com/AzureADSamples/Nativ
 We leverage [Stack Overflow](http://stackoverflow.com/) to work with the community on supporting Azure Active Directory and its SDKs, including this one! We highly recommend you ask your questions on Stack Overflow (we're all on there!) Also browser existing issues to see if someone has had your question before. 
 
 We recommend you use the "adal" tag so we can see it! Here is the latest Q&A on Stack Overflow for ADAL: [http://stackoverflow.com/questions/tagged/adal](http://stackoverflow.com/questions/tagged/adal)
+
+## SSO and Conditional Access Support
+
+This library allows your application to support our [Enterprise Mobility Suite](https://www.microsoft.com/en-us/cloud-platform/enterprise-mobility-security), including [Conditional Access](https://www.microsoft.com/en-us/cloud-platform/conditional-access), so businesses can use your application in their secure environment. 
+
+To configure your application to support these scenarios, please read this document: [How to enable cross-app SSO on iOS using ADAL](https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-sso-ios)
 
 ## Security Reporting
 
@@ -50,11 +59,11 @@ All code is licensed under the MIT license and we triage actively on GitHub. We 
 3. Add the ADAL library or framework your project
 
 
-##Download
+## Download
 
 We've made it easy for you to have multiple options to use this library in your iOS project:
 
-###Option 1: Git Submodule
+### Option 1: Git Submodule
 
  If your project is managed in a git repository you can include ADAL as a git submodule. First check the [GitHub Releases Page](https://github.com/AzureAD/azure-activedirectory-library-for-objc/releases) for the latest release tag. Replace `<latest_release_tag>` with that version.
 
@@ -68,7 +77,7 @@ We've made it easy for you to have multiple options to use this library in your 
     
 We recommend only syncing to specific release tags to make sure you're at a known good point. We will not support versions of ADAL between release tags.
 
-###Option 2: Cocoapods
+### Option 2: Cocoapods
 
 You can use CocoaPods to remain up to date with ADAL within a specific major version. Include the following line in your podfile:
 
@@ -78,7 +87,7 @@ You then you can run either `pod install` (if it's a new PodFile) or `pod update
 
 See [CocoaPods](https://cocoapods.org) for more information on setting up a PodFile
 
-###Option 3: Source Zip
+### Option 3: Source Zip
 
 To download a copy of the source code, first make sure you're on the "master" branch and click "Clone or download" then "Download ZIP" in the upper right hand corner, or you can download it [here](https://github.com/AzureAD/azure-activedirectory-library-for-objc/archive/master.zip)
 

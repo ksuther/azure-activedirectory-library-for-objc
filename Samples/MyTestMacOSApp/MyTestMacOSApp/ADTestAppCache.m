@@ -77,7 +77,11 @@
     @synchronized(self)
     {
         [self readFromKeychain];
-        [cache deserialize:_data error:nil];
+        
+        if (_data)
+        {
+            [cache deserialize:_data error:nil];
+        }
     }
 }
 
@@ -141,7 +145,7 @@
         CFDataRef data = NULL;
         OSStatus status = SecItemCopyMatching((CFDictionaryRef)readQuery, (CFTypeRef *)&data);
         
-        _data = (__bridge NSData*)data;
+        _data = (__bridge_transfer NSData*)data;
         
         return status;
     }
@@ -180,11 +184,27 @@
     }
 }
 
-- (OSStatus)deleteFromKeychain
+- (BOOL)clearCacheWithError:(NSError *__autoreleasing *)error
 {
     @synchronized (self)
     {
-        return SecItemDelete((CFDictionaryRef)@{ DEFAULT_KEYCHAIN_ATTRS });
+        if (![[ADTokenCache defaultCache] deserialize:nil error:nil])
+        {
+            return NO;
+        }
+        
+        OSStatus deleteResult = SecItemDelete((CFDictionaryRef)@{ DEFAULT_KEYCHAIN_ATTRS });
+        
+        if (deleteResult == errSecSuccess || deleteResult == errSecItemNotFound)
+        {
+            return YES;
+        }
+        else if (error)
+        {
+            *error = [NSError errorWithDomain:NSOSStatusErrorDomain code:deleteResult userInfo:nil];
+        }
+        
+        return NO;
     }
 }
 

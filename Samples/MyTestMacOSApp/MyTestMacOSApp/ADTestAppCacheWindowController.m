@@ -64,6 +64,7 @@
 + (void)showWindow
 {
     [[self controller] showWindow:nil];
+    [[self controller] reloadCache];
 }
 
 - (id)init
@@ -136,7 +137,7 @@
     else if ([identifier isEqualToString:@"refreshToken"])
     {
         NSString* refreshToken = item.refreshToken;
-        if ([refreshToken isEqualToString:@"<bad-refresh-token>"])
+        if ([refreshToken isEqualToString:@"bad-refresh-token"])
         {
             return @"<bad-rt>";
         }
@@ -235,7 +236,7 @@ static NSLineBreakMode linebreakForColumn(NSTableColumn* tableColumn)
              ADTokenCacheItem* item = _allItems[idx];
              if (item.refreshToken)
              {
-                 item.refreshToken = @"<bad-refresh-token>";
+                 item.refreshToken = @"bad-refresh-token";
              }
              
              [[ADTokenCache defaultCache] addOrUpdateItem:item correlationId:nil error:nil];

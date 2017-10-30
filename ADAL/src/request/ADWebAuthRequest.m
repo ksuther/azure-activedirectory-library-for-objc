@@ -46,9 +46,13 @@
         return nil;
     }
     
-    [self.headers setObject:@"application/json" forKey:@"Accept"];
-    [self.headers setObject:@"application/x-www-form-urlencoded" forKey:@"Content-Type"];
-    [self.headers setObject:pKeyAuthHeaderVersion forKey:pKeyAuthHeader];
+    [_requestHeaders setObject:@"application/json" forKey:@"Accept"];
+    [_requestHeaders setObject:@"application/x-www-form-urlencoded" forKey:@"Content-Type"];
+    
+    // Mac OS does not use PKeyAuth.
+#if TARGET_OS_IPHONE
+    [_requestHeaders setObject:kADALPKeyAuthHeaderVersion forKey:kADALPKeyAuthHeader];
+#endif
     
     _retryIfServerError = YES;
     
@@ -68,13 +72,13 @@
     }
     
     _startTime = [NSDate new];
-    [[ADClientMetrics getInstance] addClientMetrics:self.headers endpoint:[_requestURL absoluteString]];
+    [[ADClientMetrics getInstance] addClientMetrics:_requestHeaders endpoint:[_requestURL absoluteString]];
     
     [self send:^( NSError *error, ADWebResponse *webResponse )
     {
         if (error)
         {
-            [ADWebAuthResponse processError:error correlationId:_correlationId completion:completionBlock];
+            [ADWebAuthResponse processError:error request:self completion:completionBlock];
         }
         else
         {
