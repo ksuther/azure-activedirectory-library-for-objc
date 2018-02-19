@@ -2922,7 +2922,7 @@
 				04AB6D581D9D619B007E9A83 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Release;
 		};
 		8B0965A517F25770002BDFB8 /* Build configuration list for PBXProject "ADAL" */ = {
 			isa = XCConfigurationList;
@@ -2931,7 +2931,7 @@
 				8B0965CC17F25770002BDFB8 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Release;
 		};
 		8B0965CD17F25770002BDFB8 /* Build configuration list for PBXNativeTarget "ADALiOS" */ = {
 			isa = XCConfigurationList;
@@ -2940,7 +2940,7 @@
 				8B0965CF17F25770002BDFB8 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Release;
 		};
 		8B0965D017F25770002BDFB8 /* Build configuration list for PBXNativeTarget "ADAL_iOS_UTs" */ = {
 			isa = XCConfigurationList;
@@ -2949,7 +2949,7 @@
 				8B0965D217F25770002BDFB8 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Release;
 		};
 		9453C3D11C583E07006B9E79 /* Build configuration list for PBXNativeTarget "ADAL" */ = {
 			isa = XCConfigurationList;
@@ -2958,7 +2958,7 @@
 				9453C3D41C583E07006B9E79 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Release;
 		};
 		9453C4051C586425006B9E79 /* Build configuration list for PBXNativeTarget "ADAL Mac" */ = {
 			isa = XCConfigurationList;
@@ -2967,7 +2967,7 @@
 				9453C4041C586425006B9E79 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Release;
 		};
 		9453C4581C5866D0006B9E79 /* Build configuration list for PBXAggregateTarget "Build All" */ = {
 			isa = XCConfigurationList;
@@ -2976,7 +2976,7 @@
 				9453C45B1C5866D0006B9E79 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Release;
 		};
 		94DD18E91C5ACFBF00F80C62 /* Build configuration list for PBXNativeTarget "ADAL_Mac_UTs" */ = {
 			isa = XCConfigurationList;
@@ -2985,7 +2985,7 @@
 				94DD18EC1C5ACFBF00F80C62 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Release;
 		};
 		B20DC5A91F0D96A100957806 /* Build configuration list for PBXNativeTarget "ADAL_iOS_ITs" */ = {
 			isa = XCConfigurationList;
@@ -2994,7 +2994,7 @@
 				B20DC5AC1F0D96A100957806 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Release;
 		};
 		B20DC5CD1F0D96A700957806 /* Build configuration list for PBXNativeTarget "ADAL_Mac_ITs" */ = {
 			isa = XCConfigurationList;
@@ -3003,7 +3003,7 @@
 				B20DC5D01F0D96A700957806 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Release;
 		};
 		D64C1F5F1DB9B05A00850036 /* Build configuration list for PBXNativeTarget "ADALAutomation" */ = {
 			isa = XCConfigurationList;
@@ -3012,7 +3012,7 @@
 				D64C1F5E1DB9B05A00850036 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Release;
 		};
 		D664F1B01D302B9C0017B799 /* Build configuration list for PBXNativeTarget "ADAL-core" */ = {
 			isa = XCConfigurationList;
@@ -3021,7 +3021,7 @@
 				D664F1B31D302B9C0017B799 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
