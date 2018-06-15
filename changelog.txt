@@ -1,3 +1,41 @@
+Version 2.6.3 (04.24.2018)
+-------------
+* Fixed iOS 11.3 issue, when backgrounding application during the interactive authentication fails the login flow (#1196)
+
+Version 2.6.2 (03.27.2018)
+-------------
+* Fix a bug in remove APIs that could cause user not being completely removed (#1175)
+* Send openid scope for acquireTokenWithRefreshToken API (#1172)
+
+Version 2.6.1 (02.15.2018)
+-------------
+* Fix 'UI API called on a background thread' warning in ADBrokerHelper (#1100)
+
+Version 2.6.0 (01.16.2018)
+-------------
+* Improved handling for guest users (#1078)
+* instance_aware=true flow support for sovereign clouds (#1083)
+* Added PII flag to logs and telemetry (#1088, #1091, #1093)
+* Added an API to remove all tokens for a specified user Id (#1097)
+* Return error headers to the app developer (#1102)
+* Don’t block loading of about:blank pages (#1118)
+
+Version 2.5.4 (12.11.2017)
+-------------
+* Look for the correct error field for authority metadata discovery request (#1116)
+
+Version 2.5.3 (11.17.2017)
+-------------
+* Parse auth challenges where Bearer is not the first challenge. (#1042)
+
+Version 2.5.2 (11.06.2017)
+-------------
+* Improved SSO capabilities between different authority aliases (e.g. login.windows.net and login.microsoftonline.com) (#1060, #1061, #1069, #1079)
+* Added additional server telemetry (#1041)
+* Fixed a token persistence issue for assertion flow (#1004)
+* Added additional NSNull check, when parsing server responses (#1055)
+
+
 Version 2.5.1 (07.10.2017)
 -------------
 * Add support for applications that use the handleOpenURL:UIApplicationDelegate method for accepting URL requests (#1000)

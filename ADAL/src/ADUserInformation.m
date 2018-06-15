@@ -25,6 +25,7 @@
 #import "ADAL_Internal.h"
 #import "ADOAuth2Constants.h"
 #import "NSString+ADHelperMethods.h"
+#import "ADHelpers.h"
 
 NSString* const ID_TOKEN_SUBJECT = @"sub";
 NSString* const ID_TOKEN_TENANTID = @"tid";
@@ -56,13 +57,7 @@ NSString* const ID_TOKEN_GUEST_ID = @"altsecid";
 
 + (NSString*)normalizeUserId:(NSString*)userId
 {
-    if (!userId)
-    {
-        return nil;//Quick exit;
-    }
-    NSString* normalized = [userId adTrimmedString].lowercaseString;
-        
-    return normalized.length ? normalized : nil;
+    return [ADHelpers normalizeUserId:userId];
 }
 
 - (id)initWithUserId:(NSString*)userId
@@ -162,7 +157,7 @@ NSString* const ID_TOKEN_GUEST_ID = @"altsecid";
                     if (![ID_TOKEN_JWT_TYPE isEqualToString:type])
                     {
                         //Log it, but still try to use it as if it was a JWT token
-                        AD_LOG_WARN(@"Incompatible id_token type.", nil, type);
+                        AD_LOG_WARN(nil, @"Incompatible id_token type - %@", type);
                     }
                 }
             }
@@ -172,7 +167,7 @@ NSString* const ID_TOKEN_GUEST_ID = @"altsecid";
     }
     if (!type)
     {
-        AD_LOG_WARN(@"The id_token type is missing.", nil, @"Assuming JWT type.");
+        AD_LOG_WARN(nil, @"The id_token type is missing. Assuming JWT type.");
     }
     
     _allClaims = allClaims;
@@ -219,7 +214,7 @@ NSString* const ID_TOKEN_GUEST_ID = @"altsecid";
     {
         _uniqueId = self.subject;
     }
-    _uniqueId = [ADUserInformation normalizeUserId:_uniqueId];
+    _uniqueId = [self.class normalizeUserId:_uniqueId];
     
     return self;
 }
@@ -257,6 +252,31 @@ ID_TOKEN_PROPERTY_GETTER(guestId, ID_TOKEN_GUEST_ID);
     ADUserInformation* info = [[ADUserInformation allocWithZone:zone] initWithIdToken:idtoken
                                                                                 error:nil];
     return info;
+}
+
+- (BOOL)isEqual:(id)object
+{
+    if (!object)
+    {
+        return NO;
+    }
+    
+    if (self == object)
+    {
+        return YES;
+    }
+    
+    if (![object isKindOfClass:[ADUserInformation class]])
+    {
+        return NO;
+    }
+    
+    ADUserInformation *rhs = (ADUserInformation *)object;
+    
+    BOOL result = YES;
+    result &= [self.rawIdToken isEqual:rhs.rawIdToken] || (self.rawIdToken == rhs.rawIdToken);
+    
+    return result;
 }
 
 + (BOOL)supportsSecureCoding

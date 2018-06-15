@@ -26,6 +26,7 @@
 #import "ADLogger+Internal.h"
 #import "ADErrorCodes.h"
 #import "ADUserInformation.h"
+#import "ADHelpers.h"
 
 #define DEFAULT_USER_TYPE RequiredDisplayableId
 
@@ -42,7 +43,7 @@
         return nil;
     }
     
-    identifier->_userId = [ADUserInformation normalizeUserId:userId];
+    identifier->_userId = [ADHelpers normalizeUserId:userId];
     identifier->_type = DEFAULT_USER_TYPE;
     
     return identifier;
@@ -57,7 +58,7 @@
         return nil;
     }
     
-    identifier->_userId = [ADUserInformation normalizeUserId:userId];
+    identifier->_userId = [ADHelpers normalizeUserId:userId];
     identifier->_type = type;
     
     return identifier;
@@ -72,7 +73,7 @@
         return nil;
     }
     
-    identifier->_userId = [ADUserInformation normalizeUserId:userId];
+    identifier->_userId = [ADHelpers normalizeUserId:userId];
     identifier->_type = [ADUserIdentifier typeFromString:type];
     
     return identifier;
@@ -129,8 +130,7 @@
         case RequiredDisplayableId: return info.userId;
     }
     
-    NSString* log = [NSString stringWithFormat:@"Unrecognized type on identifier match: %d", _type];
-    AD_LOG_ERROR(log, AD_ERROR_UNEXPECTED, nil, nil);
+    AD_LOG_ERROR(nil, @"Unrecognized type on identifier match: %d", _type);
     
     return nil;
 }
@@ -171,8 +171,8 @@
     CHECK_TYPE(RequiredDisplayableId);
     
     // If it didn't match against a known type return default, but log an error
-    NSString* log = [NSString stringWithFormat:@"Did not recognize type \"%@\"", type];
-    AD_LOG_ERROR(log, AD_ERROR_UNEXPECTED, nil, nil);
+    AD_LOG_ERROR(nil, @"Did not recognize type \"%@\"", type);
+    
     return DEFAULT_USER_TYPE;
 }
 

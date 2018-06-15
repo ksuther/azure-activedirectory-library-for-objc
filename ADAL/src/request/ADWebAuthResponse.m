@@ -29,6 +29,8 @@
 #import "ADWorkplaceJoinConstants.h"
 #import "ADPKeyAuthHelper.h"
 #import "ADClientMetrics.h"
+#import "NSString+ADTelemetryExtensions.h"
+#import "ADTelemetryEventStrings.h"
 
 @implementation ADWebAuthResponse
 
@@ -226,7 +228,7 @@
             NSString *rawResponse = [[NSString alloc] initWithData:webResponse.body encoding:NSUTF8StringEncoding];
             [_responseDictionary setObject:rawResponse forKey:@"raw_response"];
             
-            completionBlock(_responseDictionary);
+            completionBlock(nil, _responseDictionary);
             return;
         }
         else
@@ -267,11 +269,14 @@
     // Request failure
     NSString* body = [[NSString alloc] initWithData:webResponse.body encoding:NSUTF8StringEncoding];
     NSString* errorData = [NSString stringWithFormat:@"Full response: %@", body];
-    AD_LOG_WARN(([NSString stringWithFormat:@"HTTP Error %ld", (long)webResponse.statusCode]), _request.correlationId, errorData);
     
-    ADAuthenticationError* adError = [ADAuthenticationError HTTPErrorCode:webResponse.statusCode
-                                                                     body:[NSString stringWithFormat:@"(%lu bytes)", (unsigned long)webResponse.body.length]
-                                                            correlationId:_request.correlationId];
+    AD_LOG_WARN(_request.correlationId, @"HTTP Error %ld", (long)webResponse.statusCode);
+    AD_LOG_WARN_PII(_request.correlationId, @"%@", errorData);
+    
+    ADAuthenticationError* adError = [ADAuthenticationError errorFromHTTPErrorCode:webResponse.statusCode
+                                                                              body:[NSString stringWithFormat:@"(%lu bytes)", (unsigned long)webResponse.body.length]
+                                                                           headers:webResponse.headers
+                                                                     correlationId:_request.correlationId];
     
     //Now add the information to the dictionary, so that the parser can extract it:
     [self handleADError:adError completionBlock:completionBlock];
@@ -300,6 +305,19 @@
     
     // Load the response
     [_responseDictionary addEntriesFromDictionary:(NSDictionary*)jsonObject];
+    
+    NSString *clientTelemetry = [webResponse headers][ADAL_CLIENT_TELEMETRY];
+    
+    if (![NSString adIsStringNilOrBlank:clientTelemetry])
+    {
+        NSString *speInfo = [clientTelemetry parsedClientTelemetry][AD_TELEMETRY_KEY_SPE_INFO];
+        
+        if (![NSString adIsStringNilOrBlank:speInfo])
+        {
+            [_responseDictionary setObject:speInfo forKey:AD_TELEMETRY_KEY_SPE_INFO];
+        }
+    }
+    
     [self handleSuccess:completionBlock];
     return;
 }
@@ -314,7 +332,8 @@
     
     if (!authHeaderParams)
     {
-        AD_LOG_ERROR_F(@"Unparseable wwwAuthHeader received.", AD_ERROR_SERVER_WPJ_REQUIRED, _request.correlationId, @"%@", wwwAuthHeaderValue);
+        AD_LOG_ERROR(_request.correlationId, @"Unparseable wwwAuthHeader received");
+        AD_LOG_ERROR_PII(_request.correlationId, @"Unparseable wwwAuthHeader received %@", wwwAuthHeaderValue);
     }
     
     ADAuthenticationError* adError = nil;
@@ -342,7 +361,7 @@
                                             correlationId:_request.correlationId
                                              errorDetails:nil];
     
-    completionBlock(_responseDictionary);
+    completionBlock(nil, _responseDictionary);
 }
 
 #pragma mark -
@@ -362,7 +381,7 @@
     
     if (body.length == 0)
     {
-        AD_LOG_ERROR(@"Empty body received, expected JSON response.", jsonError.code, _request.correlationId, nil);
+        AD_LOG_ERROR(_request.correlationId, @"Empty body received, expected JSON response. Error code: %ld", (long)jsonError.code);
     }
     else
     {
@@ -375,9 +394,8 @@
             bodyStr = [[NSString alloc] initWithFormat:@"large response, probably HTML, <%lu bytes>", (unsigned long)[body length]];
         }
         
-        NSString* errorMsg = [NSString stringWithFormat:@"JSON deserialization error: %@", jsonError.description];
-        
-        AD_LOG_ERROR_F(errorMsg, jsonError.code, _request.correlationId, @"%@", bodyStr);
+        AD_LOG_ERROR(_request.correlationId, @"JSON deserialization error:");
+        AD_LOG_ERROR_PII(_request.correlationId, @"JSON deserialization error: %@ - %@", jsonError.description, bodyStr);
     }
     
     [self handleNSError:jsonError completionBlock:completionBlock];
@@ -396,7 +414,9 @@
         [_responseDictionary setObject:url forKey:@"url"];
     }
     
-    AD_LOG_WARN(@"System error while making request.", _request.correlationId, error.description);
+    AD_LOG_WARN(_request.correlationId, @"System error while making request");
+    AD_LOG_WARN_PII(_request.correlationId, @"System error while making request %@", error.description);
+
     // System error
     ADAuthenticationError* adError = [ADAuthenticationError errorFromNSError:error
                                                                 errorDetails:error.localizedDescription
@@ -408,15 +428,12 @@
 - (void)handleADError:(ADAuthenticationError*)adError
       completionBlock:(ADWebResponseCallback)completionBlock
 {
-    [_responseDictionary setObject:adError
-                            forKey:AUTH_NON_PROTOCOL_ERROR];
-    
     [[ADClientMetrics getInstance] endClientMetricsRecord:[[_request URL] absoluteString]
                                                 startTime:[_request startTime]
                                             correlationId:_request.correlationId
                                              errorDetails:[adError errorDetails]];
     
-    completionBlock(_responseDictionary);
+    completionBlock(adError, _responseDictionary);
 }
 
 @end

@@ -68,6 +68,12 @@
                               errorDetails:(NSString *)errorDetails
                              correlationId:(NSUUID *)correlationId;
 
++ (ADAuthenticationError *)errorWithDomain:(NSString *)domain
+                                      code:(NSInteger)code
+                         protocolErrorCode:(NSString *)protocolCode
+                              errorDetails:(NSString *)errorDetails
+                             correlationId:(NSUUID *)correlationId;
+
 /*! Genearates an error from the code and details of an authentication error */
 + (ADAuthenticationError*)errorFromAuthenticationError:(NSInteger)code
                                           protocolCode:(NSString *)protocolCode
@@ -102,9 +108,10 @@
                                                status:(OSStatus)status
                                         correlationId:(NSUUID *)correlationId;
 
-+ (ADAuthenticationError *)HTTPErrorCode:(NSInteger)code
-                                    body:(NSString *)body
-                           correlationId:(NSUUID *)correlationId;
++ (ADAuthenticationError *)errorFromHTTPErrorCode:(NSInteger)code
+                                             body:(NSString *)body
+                                          headers:(NSDictionary *)headers
+                                    correlationId:(NSUUID *)correlationId;
 
 + (ADAuthenticationError *)OAuthServerError:(NSString *)protocolCode
                                 description:(NSString *)description

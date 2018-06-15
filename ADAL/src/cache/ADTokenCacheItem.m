@@ -30,6 +30,9 @@
 #import "ADTokenCacheItem+Internal.h"
 
 @implementation ADTokenCacheItem
+{
+    NSString *_storageAuthority;
+}
 
 @synthesize accessToken = _accessToken;
 @synthesize accessTokenType = _accessTokenType;
@@ -37,6 +40,7 @@
 @synthesize refreshToken = _refreshToken;
 @synthesize sessionKey = _sessionKey;
 @synthesize familyId = _familyId;
+@synthesize storageAuthority = _storageAuthority;
 
 + (void)load
 {
@@ -80,7 +84,6 @@
     item->_expiresOn = [_expiresOn copyWithZone:zone];
     item->_userInformation = [_userInformation copyWithZone:zone];
     item->_sessionKey = [_sessionKey copyWithZone:zone];
-	item->_tombstone = [_tombstone mutableCopyWithZone:zone];
     item->_additionalClient = [_additionalClient mutableCopyWithZone:zone];
     item->_additionalServer = [_additionalServer copyWithZone:zone];
     
@@ -91,6 +94,14 @@
 
 - (ADTokenCacheKey*)extractKey:(ADAuthenticationError* __autoreleasing *)error
 {
+    if (_storageAuthority)
+    {
+        return [ADTokenCacheKey keyWithAuthority:_storageAuthority
+                                        resource:_resource
+                                        clientId:_clientId
+                                           error:error];
+    }
+    
     return [ADTokenCacheKey keyWithAuthority:_authority
                                     resource:_resource
                                     clientId:_clientId
@@ -115,16 +126,6 @@
     return !_userInformation;
 }
 
-/*! Verifies if the user (as defined by userId) is the same between the two items. */
-- (BOOL)isSameUser:(ADTokenCacheItem*) other
-{
-    THROW_ON_NIL_ARGUMENT(other);
-    
-    if ([self isEmptyUser])
-        return [other isEmptyUser];
-    return (nil != other.userInformation && [_userInformation.userId isEqualToString:other.userInformation.userId]);
-}
-
 + (BOOL)supportsSecureCoding
 {
     return YES;
@@ -143,7 +144,6 @@
     [aCoder encodeObject:_sessionKey forKey:@"sessionKey"];
     [aCoder encodeObject:_expiresOn forKey:@"expiresOn"];
     [aCoder encodeObject:_userInformation forKey:@"userInformation"];
-	[aCoder encodeObject:_tombstone forKey:@"tombstone"];
     [aCoder encodeObject:_additionalClient forKey:@"additionalClient"];
     [aCoder encodeObject:_additionalServer forKey:@"additionalServer"];
 }
@@ -168,7 +168,6 @@
     _refreshToken = [aDecoder decodeObjectOfClass:[NSString class] forKey:@"refreshToken"];
     _expiresOn = [aDecoder decodeObjectOfClass:[NSDate class] forKey:@"expiresOn"];
     _userInformation = [aDecoder decodeObjectOfClass:[ADUserInformation class] forKey:@"userInformation"];
-	_tombstone = [aDecoder decodeObjectOfClass:[NSMutableDictionary class] forKey:@"tombstone"];
     _additionalClient = [aDecoder decodeObjectOfClass:[NSMutableDictionary class] forKey:@"additionalClient"];
     _additionalServer = [aDecoder decodeObjectOfClass:[NSDictionary class] forKey:@"additionalServer"];
     
@@ -180,34 +179,38 @@
 - (BOOL)isEqual:(id)object
 {
     if (!object)
+    {
         return NO;
+    }
+    
+    if (self == object)
+    {
+        return YES;
+    }
     
     if (![object isKindOfClass:[ADTokenCacheItem class]])
-        return NO;
-    
-    ADTokenCacheItem* item = (ADTokenCacheItem*)object;
-    
-    if (_resource && (!item.resource || ![_resource isEqualToString:item.resource]))
     {
         return NO;
     }
     
-    if (![_authority isEqualToString:item.authority])
-    {
-        return NO;
-    }
+    ADTokenCacheItem *rhs = (ADTokenCacheItem *)object;
     
-    if (![_clientId isEqualToString:item.clientId])
-    {
-        return NO;
-    }
+    BOOL result = YES;
     
-    if (![self isSameUser:item])
-    {
-        return NO;
-    }
-    
-    return YES;
+    result &= [self.resource isEqualToString:rhs.resource] || (self.resource == rhs.resource);
+    result &= [self.authority isEqualToString:rhs.authority] || (self.authority == rhs.authority);
+    result &= [self.clientId isEqualToString:rhs.clientId] || (self.clientId == rhs.clientId);
+    result &= [self.familyId isEqualToString:rhs.familyId] || (self.familyId == rhs.familyId);
+    result &= [self.accessToken isEqualToString:rhs.accessToken] || (self.accessToken == rhs.accessToken);
+    result &= [self.accessTokenType isEqualToString:rhs.accessTokenType] || (self.accessTokenType == rhs.accessTokenType);
+    result &= [self.refreshToken isEqualToString:rhs.refreshToken] || (self.refreshToken == rhs.refreshToken);
+    result &= [self.expiresOn isEqualToDate:rhs.expiresOn] || (self.expiresOn == rhs.expiresOn);
+    result &= [self.userInformation isEqual:rhs.userInformation]  || (self.userInformation == rhs.userInformation);
+    result &= [self.sessionKey isEqualToData:rhs.sessionKey] || (self.sessionKey == rhs.sessionKey);
+    result &= [self.additionalClient isEqualToDictionary:rhs.additionalClient] || (self.additionalClient == rhs.additionalClient);
+    result &= [self.additionalServer isEqualToDictionary:rhs.additionalServer] || (self.additionalServer == rhs.additionalServer);
+
+    return result;
 }
 
 - (NSString *)description
@@ -276,10 +279,6 @@
     }
     _authority = [authority copy];
     [self calculateHash];
-}
-- (NSDictionary *)tombstone
-{
-    return _tombstone;
 }
 
 @end

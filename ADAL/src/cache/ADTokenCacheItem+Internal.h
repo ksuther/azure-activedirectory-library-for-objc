@@ -32,6 +32,19 @@
 @property (readwrite) NSMutableDictionary * additionalClient;
 @property (readonly) NSDictionary * additionalServer;
 
+/*!
+ This indicates whether the request was executed on a ring serving SPE traffic. 
+ An empty string indicates this occurred on an outer ring, 
+ and the string "I" indicated the request occurred on the inner ring.
+ */
+@property (readonly) NSString *speInfo;
+
+@end
+
+@interface ADTokenCacheItem ()
+
+@property NSString *storageAuthority;
+
 @end
 
 @interface ADTokenCacheItem (Internal)
@@ -54,8 +67,6 @@
     @return Whether the resulting item is a Multi Resource Refresh Token
  */
 - (BOOL)fillItemWithResponse:(NSDictionary*)response;
-
-- (void)makeTombstone:(NSDictionary*)tombstoneEntries;
 
 - (void)logMessage:(NSString *)message
              level:(ADAL_LOG_LEVEL)level

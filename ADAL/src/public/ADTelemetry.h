@@ -53,6 +53,11 @@
 + (nonnull ADTelemetry*)sharedInstance;
 
 /*!
+Setting piiEnabled to YES, will allow ADAL to return fields with user information in the telemetry events. ADAL does not send telemetry data by itself to any server. If apps want to collect ADAL telemetry with user information they must setup the telemetry callback and set this flag on. By default ADAL will not return any user information in telemetry.
+ */
+@property (nonatomic) BOOL piiEnabled;
+
+/*!
     Register a telemetry dispatcher for receiving telemetry events.
     @param dispatcher            An instance of ADDispatcher implementation.
     @param aggregationRequired   If set NO, all telemetry events collected by ADAL will be dispatched;

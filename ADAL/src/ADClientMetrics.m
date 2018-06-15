@@ -81,7 +81,7 @@ const NSString* HeaderLastEndpoint = @"x-client-last-endpoint";
         }
         else
         {
-            AD_LOG_ERROR(@"unable to add client metrics.", AD_ERROR_UNEXPECTED, nil, nil);
+            AD_LOG_ERROR(nil, @"unable to add client metrics.");
         }
         
         _errorToReport = nil;
@@ -110,6 +110,19 @@ const NSString* HeaderLastEndpoint = @"x-client-last-endpoint";
         _correlationId = [correlationId UUIDString];
         _responseTime = [NSString stringWithFormat:@"%f", [startTime timeIntervalSinceNow] * -1000.0];
         _isPending = YES;
+    }
+}
+
+- (void)clearMetrics
+{
+    @synchronized (self)
+    {
+        _errorToReport = nil;
+        _endpoint = nil;
+        _correlationId = nil;
+        _responseTime = nil;
+        
+        _isPending = NO;
     }
 }
 

@@ -67,6 +67,8 @@ extern NSString *const BROKER_APP_VERSION;
 extern NSString *const BROKER_RESPONSE_KEY;
 extern NSString *const BROKER_HASH_KEY;
 
+extern NSString *const ADAL_CLIENT_TELEMETRY;
+
 //Diagnostic traces sent to the Azure Active Directory servers:
 extern NSString *const ADAL_ID_PLATFORM;//The ADAL platform. iOS or OSX
 extern NSString *const ADAL_ID_VERSION;
@@ -90,6 +92,10 @@ extern NSString *const AUTH_FAILED_BUSY;
 
 extern NSString *const AAD_SECURECONVERSATION_LABEL;
 
+extern NSString *const AUTH_USERNAME_KEY;
+extern NSString *const AUTH_CLOUD_INSTANCE_HOST_NAME;
+
 extern NSString* const ADAL_BROKER_SCHEME;
 extern NSString* const ADAL_BROKER_APP_REDIRECT_URI;
 extern NSString* const ADAL_BROKER_APP_BUNDLE_ID;
+extern NSString* const ADAL_BROKER_APP_BUNDLE_ID_DOGFOOD;

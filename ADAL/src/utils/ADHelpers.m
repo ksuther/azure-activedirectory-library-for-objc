@@ -31,6 +31,7 @@
 
 #import "ADOauth2Constants.h"
 #import "ADAL_Internal.h"
+#import "ADAuthorityUtils.h"
 
 @implementation ADHelpers
 
@@ -327,13 +328,16 @@
     NSURL* url = [NSURL URLWithString:trimmedAuthority];
     if (!url)
     {
-        AD_LOG_WARN_F(@"The authority is not a valid URL", nil, @"Authority %@", authority);
+        AD_LOG_WARN(nil, @" The authority is not a valid URL - authority host: %@", [ADAuthorityUtils isKnownHost:[authority adUrl]] ? [authority adUrl].host : @"unknown host");
+        AD_LOG_WARN_PII(nil, @" The authority is not a valid URL authority: %@", authority);
+
         return nil;
     }
     NSString* scheme = url.scheme;
     if (![scheme isEqualToString:@"https"])
     {
-        AD_LOG_WARN_F(@"Non HTTPS protocol for the authority", nil, @"Authority %@", authority);
+        AD_LOG_WARN(nil, @"Non HTTPS protocol for the authority");
+        AD_LOG_WARN_PII(nil, @"Non HTTPS protocol for the authority %@", authority);
         return nil;
     }
     
@@ -393,5 +397,29 @@
     return adError;
 }
 
++ (NSString *)stringFromDate:(NSDate *)date
+{
+    static NSDateFormatter* s_dateFormatter = nil;
+    static dispatch_once_t s_dateOnce;
+    
+    dispatch_once(&s_dateOnce, ^{
+        s_dateFormatter = [[NSDateFormatter alloc] init];
+        [s_dateFormatter setTimeZone:[NSTimeZone timeZoneWithName:@"UTC"]];
+        [s_dateFormatter setDateFormat:@"yyyy-MM-dd HH:mm:ss.SSSS"];
+    });
+    
+    return [s_dateFormatter stringFromDate:date];
+}
+
++ (NSString *)normalizeUserId:(NSString *)userId
+{
+    if (!userId)
+    {
+        return nil;//Quick exit;
+    }
+    NSString* normalized = [userId adTrimmedString].lowercaseString;
+    
+    return normalized.length ? normalized : nil;
+}
 
 @end

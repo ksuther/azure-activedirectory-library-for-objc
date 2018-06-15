@@ -101,7 +101,7 @@
     int err = pthread_rwlock_wrlock(&_lock);
     if (err != 0)
     {
-        AD_LOG_ERROR(@"pthread_rwlock_wrlock failed in setDelegate", err, nil, nil);
+        AD_LOG_ERROR(nil, @"pthread_rwlock_wrlock failed in setDelegate");
         return;
     }
     
@@ -130,7 +130,7 @@
     int err = pthread_rwlock_rdlock(&_lock);
     if (err != 0)
     {
-        AD_LOG_ERROR(@"pthread_rwlock_rdlock failed in serialize", err, nil, nil);
+        AD_LOG_ERROR(nil, @"pthread_rwlock_rdlock failed in serialize");
         return nil;
     }
     NSDictionary* cacheCopy = [_cache mutableCopy];
@@ -147,7 +147,7 @@
     @catch (id exception)
     {
         // This should be exceedingly rare as all of the objects in the cache we placed there.
-        AD_LOG_ERROR(@"Failed to serialize the cache!", AD_ERROR_CACHE_BAD_FORMAT, nil, nil);
+        AD_LOG_ERROR(nil, @"Failed to serialize the cache!");
         return nil;
     }
 }
@@ -219,12 +219,12 @@
     {
         if (_cache)
         {
-            AD_LOG_WARN(@"nil data provided to -updateCache, dropping old cache", nil, nil);
+            AD_LOG_WARN(nil, @"nil data provided to -updateCache, dropping old cache.");
             _cache = nil;
         }
         else
         {
-            AD_LOG_INFO(@"No data provided for cache.", nil, nil);
+            AD_LOG_INFO(nil, @"No data provided for cache.");
         }
         return YES;
     }
@@ -327,7 +327,7 @@
     int err = pthread_rwlock_wrlock(&_lock);
     if (err != 0)
     {
-        AD_LOG_ERROR(@"pthread_rwlock_wrlock failed in removeItem", err, nil, nil);
+        AD_LOG_ERROR(nil, @"pthread_rwlock_wrlock failed in removeItem");
         return NO;
     }
     BOOL result = [self removeImpl:item error:error];
@@ -384,26 +384,7 @@
  Returns nil in case of error. */
 - (NSArray<ADTokenCacheItem *> *)allItems:(ADAuthenticationError * __autoreleasing *)error
 {
-    NSArray<ADTokenCacheItem *> * items = [self getItemsWithKey:nil userId:nil correlationId:nil error:error];
-    return [self filterOutTombstones:items];
-}
-
--(NSMutableArray*)filterOutTombstones:(NSArray*) items
-{
-    if(!items)
-    {
-        return nil;
-    }
-    
-    NSMutableArray* itemsKept = [NSMutableArray new];
-    for (ADTokenCacheItem* item in items)
-    {
-        if (![item tombstone])
-        {
-            [itemsKept addObject:item];
-        }
-    }
-    return itemsKept;
+    return [self getItemsWithKey:nil userId:nil correlationId:nil error:error];
 }
 
 @end
@@ -470,23 +451,17 @@
                                error:(ADAuthenticationError * __autoreleasing *)error
 {
     NSArray<ADTokenCacheItem *> * items = [self getItemsWithKey:key userId:userId correlationId:correlationId error:error];
-    NSArray<ADTokenCacheItem *> * itemsExcludingTombstones = [self filterOutTombstones:items];
     
-    if (!itemsExcludingTombstones || itemsExcludingTombstones.count == 0)
+    if (items.count == 0)
     {
-        for (ADTokenCacheItem* item in items)
-        {
-            [item logMessage:@"Found"
-                       level:ADAL_LOG_LEVEL_WARN
-               correlationId:correlationId];
-        }
         return nil;
     }
     
-    if (itemsExcludingTombstones.count == 1)
+    if (items.count == 1)
     {
-        return itemsExcludingTombstones.firstObject;
+        return items.firstObject;
     }
+
     
     ADAuthenticationError* adError =
     [ADAuthenticationError errorFromAuthenticationError:AD_ERROR_CACHE_MULTIPLE_USERS
@@ -515,7 +490,7 @@
     int err = pthread_rwlock_wrlock(&_lock);
     if (err != 0)
     {
-        AD_LOG_ERROR(@"pthread_rwlock_wrlock failed in addOrUpdateItem", err, correlationId, nil);
+        AD_LOG_ERROR(correlationId, @"pthread_rwlock_wrlock failed in addOrUpdateItem");
         return NO;
     }
     BOOL result = [self addOrUpdateImpl:item correlationId:correlationId error:error];
@@ -594,7 +569,7 @@
     int err = pthread_rwlock_rdlock(&_lock);
     if (err != 0)
     {
-        AD_LOG_ERROR(@"pthread_rwlock_rdlock failed in getItemsWithKey", err, correlationId, nil);
+        AD_LOG_ERROR(correlationId, @"pthread_rwlock_rdlock failed in getItemsWithKey");
         return nil;
     }
     NSArray<ADTokenCacheItem *> * result = [self getItemsImplKey:key userId:userId];
@@ -605,18 +580,10 @@
     return result;
 }
 
-- (NSArray<ADTokenCacheItem *> *)allTombstones:(ADAuthenticationError * __autoreleasing *)error
+- (nullable NSDictionary *)getWipeTokenData
 {
-    NSArray* items = [self getItemsWithKey:nil userId:nil correlationId:nil error:error];
-    NSMutableArray* tombstones = [NSMutableArray new];
-    for (ADTokenCacheItem* item in items)
-    {
-        if ([item tombstone])
-        {
-            [tombstones addObject:item];
-        }
-    }
-    return tombstones;
+    // Wiping token data is not yet supported on macOS
+    return nil;
 }
 
 - (NSString *)description

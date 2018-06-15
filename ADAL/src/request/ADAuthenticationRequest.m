@@ -32,6 +32,7 @@
 #import "NSURL+ADExtensions.h"
 #import "ADTelemetry.h"
 #import "ADTelemetry+Internal.h"
+#import "NSString+ADURLExtensions.h"
 
 #if TARGET_OS_IPHONE
 #import "ADBrokerKeyHelper.h"
@@ -49,7 +50,7 @@ static dispatch_semaphore_t s_interactionLock = nil;
 
 @synthesize logComponent = _logComponent;
 
-#define RETURN_IF_NIL(_X) { if (!_X) { AD_LOG_ERROR(@#_X " must not be nil!", AD_FAILED, nil, nil); return nil; } }
+#define RETURN_IF_NIL(_X) { if (!_X) { AD_LOG_ERROR(nil, @#_X " must not be nil!"); return nil; } }
 #define ERROR_RETURN_IF_NIL(_X) { \
     if (!_X) { \
         if (error) { \
@@ -80,6 +81,10 @@ static dispatch_semaphore_t s_interactionLock = nil;
     }
     
     request->_context = context;
+    ADRequestParameters *params = [ADRequestParameters new];
+    params.authority = context.authority;
+    params.tokenCache = context.tokenCacheStore;
+    request->_requestParams = params;
     
     return request;
 }
@@ -116,22 +121,18 @@ static dispatch_semaphore_t s_interactionLock = nil;
     return self;
 }
 
+
+
 #define CHECK_REQUEST_STARTED { \
     if (_requestStarted) { \
-        NSString* _details = [NSString stringWithFormat:@"call to %s after the request started. call has no effect.", __PRETTY_FUNCTION__]; \
-        AD_LOG_WARN(_details, nil, nil); \
+        AD_LOG_WARN(nil, @"call to %s after the request started. call has no effect.", __PRETTY_FUNCTION__); \
         return; \
     } \
 }
 
 - (void)setScope:(NSString *)scope
 {
-    CHECK_REQUEST_STARTED;
-    if (_scope == scope)
-    {
-        return;
-    }
-    _scope = [scope copy];
+    _requestParams.scope = scope;
 }
 
 - (void)setExtraQueryParameters:(NSString *)queryParams
@@ -198,6 +199,18 @@ static dispatch_semaphore_t s_interactionLock = nil;
     [_requestParams setCorrelationId:correlationId];
 }
 
+- (void)setCloudInstanceHostname:(NSString *)cloudInstanceHostName
+{
+    if (cloudInstanceHostName)
+    {
+        _cloudAuthority = [_context.authority adAuthorityWithCloudInstanceHostname:cloudInstanceHostName];
+    }
+    else
+    {
+        _cloudAuthority = _context.authority;
+    }
+}
+
 #if AD_BROKER
 
 - (NSString*)redirectUri
@@ -244,6 +257,12 @@ static dispatch_semaphore_t s_interactionLock = nil;
     CHECK_REQUEST_STARTED;
     
     _assertionType = assertionType;
+}
+
+- (void)setRefreshToken:(NSString *)refreshToken
+{
+    CHECK_REQUEST_STARTED;
+    _refreshToken = [refreshToken copy];
 }
 
 - (void)ensureRequest

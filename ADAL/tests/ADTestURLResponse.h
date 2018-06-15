@@ -29,14 +29,17 @@
     NSURL *_requestURL;
     id _requestJSONBody;
     id _requestParamsBody;
-    NSDictionary *_requestHeaders;
+    NSMutableDictionary *_requestHeaders;
     NSData *_requestBody;
     NSDictionary *_QPs;
     NSDictionary *_expectedRequestHeaders;
     NSData *_responseData;
     NSURLResponse *_response;
     NSError *_error;
+    dispatch_semaphore_t _waitSemaphore;
 }
+
++ (NSDictionary *)defaultHeaders;
 
 + (ADTestURLResponse*)requestURLString:(NSString *)requestUrlString
                      responseURLString:(NSString *)responseUrlString
@@ -71,30 +74,10 @@
 
 + (ADTestURLResponse*)serverNotFoundResponseForURLString:(NSString *)requestURLString;
 
-+ (ADTestURLResponse*)responseValidAuthority:(NSString *)authority;
-+ (ADTestURLResponse*)responseInvalidAuthority:(NSString *)authority;
-
-+ (ADTestURLResponse*)responseValidDrsPayload:(NSString *)domain
-                                      onPrems:(BOOL)onPrems
-                passiveAuthenticationEndpoint:(NSString *)passiveAuthEndpoint;
-+ (ADTestURLResponse*)responseInvalidDrsPayload:(NSString *)domain
-                                        onPrems:(BOOL)onPrems;
-+ (ADTestURLResponse*)responseUnreachableDrsService:(NSString *)domain
-                                            onPrems:(BOOL)onPrems;
-+ (ADTestURLResponse*)responseValidWebFinger:(NSString *)passiveEndpoint
-                                   authority:(NSString *)authority;
-+ (ADTestURLResponse*)responseInvalidWebFinger:(NSString *)passiveEndpoint
-                                     authority:(NSString *)authority;
-+ (ADTestURLResponse*)responseInvalidWebFingerNotTrusted:(NSString *)passiveEndpoint
-                                               authority:(NSString *)authority;
-+ (ADTestURLResponse*)responseUnreachableWebFinger:(NSString *)passiveEndpoint
-                                         authority:(NSString *)authority;
-
-
 - (void)setRequestURL:(NSURL *)requestURL;
 - (void)setRequestHeaders:(NSDictionary *)headers;
 - (void)setRequestBody:(NSData *)body;
-- (void)setRequestJSONBody:(NSDictionary *)jsonBody;
+- (void)setUrlFormEncodedBody:(NSDictionary *)formParameters;
 
 - (void)setResponseURL:(NSString *)urlString
                   code:(NSInteger)code
@@ -102,6 +85,15 @@
 - (void)setResponseJSON:(id)jsonResponse;
 - (void)setResponseData:(NSData *)response;
 
+/*!
+    Set a semaphore that ADTestURLSession will wait on until it is signalled in the test. The test
+    must signal this semaphore or else the test will deadlock.
+ */
+- (void)setWaitSemaphore:(dispatch_semaphore_t)sem;
+
+- (BOOL)matchesURL:(NSURL *)url
+           headers:(NSDictionary *)headers
+              body:(NSData *)body;
 - (BOOL)matchesURL:(NSURL *)url;
 - (BOOL)matchesBody:(NSData *)body;
 - (BOOL)matchesHeaders:(NSDictionary *)headers;

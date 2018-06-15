@@ -22,10 +22,38 @@
 // THE SOFTWARE.
 
 #import "ADTestURLResponse.h"
-#import "ADOAuth2Constants.h"
+
 #import "NSDictionary+ADExtensions.h"
+#import "NSDictionary+ADTestUtil.h"
+#import "NSURL+ADExtensions.h"
+#import "NSURL+ADTestUtil.h"
 
 @implementation ADTestURLResponse
+
++ (NSDictionary *)defaultHeaders
+{
+    static NSDictionary *s_defaultHeaders = nil;
+    static dispatch_once_t once;
+    
+    dispatch_once(&once, ^{
+        NSMutableDictionary* headers = [[ADLogger adalId] mutableCopy];
+        
+        headers[@"Accept"] = @"application/json";
+        headers[@"client-request-id"] = [ADTestRequireValueSentinel sentinel];
+        headers[@"return-client-request-id"] = @"true";
+        
+#if TARGET_OS_IPHONE
+        headers[@"x-ms-PkeyAuth"] = @"1.0";
+#endif
+        
+        // TODO: This really shouldn't be a default header...
+        headers[@"Content-Type"] = @"application/x-www-form-urlencoded";
+        
+        s_defaultHeaders = [headers copy];
+    });
+    
+    return s_defaultHeaders;
+}
 
 + (ADTestURLResponse *)request:(NSURL *)request
                requestJSONBody:(NSDictionary *)requestBody
@@ -37,6 +65,7 @@
     response->_requestJSONBody = requestBody;
     response->_response = urlResponse;
     response->_responseData = data;
+    [response setRequestHeaders:nil];
     
     return response;
 }
@@ -50,6 +79,7 @@
     [response setRequestURL:request];
     response->_response = urlResponse;
     response->_responseData = data;
+    [response setRequestHeaders:nil];
     
     return response;
 }
@@ -61,6 +91,7 @@
     
     [response setRequestURL:request];
     response->_response = urlResponse;
+    [response setRequestHeaders:nil];
     
     return response;
 }
@@ -71,6 +102,7 @@
     ADTestURLResponse * response = [ADTestURLResponse new];
     
     [response setRequestURL:request];
+    [response setRequestHeaders:[ADLogger adalId]];
     response->_error = error;
     
     return response;
@@ -86,146 +118,6 @@
     return response;
 }
 
-+ (ADTestURLResponse *)responseValidAuthority:(NSString *)authority
-{
-    NSString* authorityValidationURL = [NSString stringWithFormat:@"https://login.windows.net/common/discovery/instance?api-version=1.0&authorization_endpoint=%@/oauth2/authorize&x-client-Ver=" ADAL_VERSION_STRING, [authority lowercaseString]];
-    ADTestURLResponse *response = [ADTestURLResponse requestURLString:authorityValidationURL
-                                                    responseURLString:@"https://idontmatter.com"
-                                                         responseCode:200
-                                                     httpHeaderFields:@{}
-                                                     dictionaryAsJSON:@{@"tenant_discovery_endpoint" : @"totally valid!"}];
-    
-    return response;
-}
-
-+ (ADTestURLResponse *)responseInvalidAuthority:(NSString *)authority
-{
-    NSString* authorityValidationURL = [NSString stringWithFormat:@"https://login.windows.net/common/discovery/instance?api-version=1.0&authorization_endpoint=%@/oauth2/authorize&x-client-Ver=" ADAL_VERSION_STRING, [authority lowercaseString]];
-    ADTestURLResponse *response = [ADTestURLResponse requestURLString:authorityValidationURL
-                                                    responseURLString:@"https://idontmatter.com"
-                                                         responseCode:400
-                                                     httpHeaderFields:@{}
-                                                     dictionaryAsJSON:@{OAUTH2_ERROR : @"I'm an OAUTH server error!",
-                                                                        OAUTH2_ERROR_DESCRIPTION : @" I'm an OAUTH error description!"}];
-    
-    return response;
-}
-
-+ (ADTestURLResponse *)responseValidDrsPayload:(NSString *)domain
-                                       onPrems:(BOOL)onPrems
-                 passiveAuthenticationEndpoint:(NSString *)passiveAuthEndpoint
-{
-    NSString* validationPayloadURL = [NSString stringWithFormat:@"%@%@/enrollmentserver/contract?api-version=1.0&x-client-Ver=" ADAL_VERSION_STRING,
-                                      onPrems ? @"https://enterpriseregistration." : @"https://enterpriseregistration.windows.net/", domain];
-    
-    ADTestURLResponse *response = [ADTestURLResponse requestURLString:validationPayloadURL
-                                                    responseURLString:@"https://idontmatter.com"
-                                                         responseCode:200
-                                                     httpHeaderFields:@{}
-                                                     dictionaryAsJSON:@{@"DeviceRegistrationService" :
-                                                                            @{@"RegistrationEndpoint" : @"https://idontmatter.com/EnrollmentServer/DeviceEnrollmentWebService.svc",
-                                                                              @"RegistrationResourceId" : @"urn:ms-drs:UUID"
-                                                                              },
-                                                                        @"AuthenticationService" :
-                                                                            @{@"AuthCodeEndpoint" : @"https://idontmatter.com/adfs/oauth2/authorize",
-                                                                              @"TokenEndpoint" : @"https://idontmatter.com/adfs/oauth2/token"
-                                                                              },
-                                                                        @"IdentityProviderService" :
-                                                                            @{@"PassiveAuthEndpoint" : passiveAuthEndpoint}
-                                                                        }];
-    return response;
-}
-
-
-+ (ADTestURLResponse *)responseInvalidDrsPayload:(NSString *)domain
-                                         onPrems:(BOOL)onPrems
-{
-    NSString* validationPayloadURL = [NSString stringWithFormat:@"%@%@/enrollmentserver/contract?api-version=1.0&x-client-Ver=" ADAL_VERSION_STRING,
-                                      onPrems ? @"https://enterpriseregistration." : @"https://enterpriseregistration.windows.net/", domain];
-    
-    ADTestURLResponse *response = [ADTestURLResponse requestURLString:validationPayloadURL
-                                                    responseURLString:@"https://idontmatter.com"
-                                                         responseCode:400
-                                                     httpHeaderFields:@{}
-                                                     dictionaryAsJSON:@{}];
-    return response;
-}
-
-
-+ (ADTestURLResponse *)responseUnreachableDrsService:(NSString *)domain
-                                             onPrems:(BOOL)onPrems
-{
-    NSString *drsURL = [NSString stringWithFormat:@"%@%@/enrollmentserver/contract?api-version=1.0&x-client-Ver=" ADAL_VERSION_STRING,
-                        onPrems ? @"https://enterpriseregistration." : @"https://enterpriseregistration.windows.net/", domain];
-    
-    return [self serverNotFoundResponseForURLString:drsURL];
-}
-
-
-+ (ADTestURLResponse *)responseValidWebFinger:(NSString *)passiveEndpoint
-                                    authority:(NSString *)authority
-{
-    NSURL *endpointFullUrl = [NSURL URLWithString:passiveEndpoint.lowercaseString];
-    NSString *url = [NSString stringWithFormat:@"https://%@/.well-known/webfinger?resource=%@&x-client-Ver=" ADAL_VERSION_STRING, endpointFullUrl.host, authority];
-    
-    ADTestURLResponse *response = [ADTestURLResponse requestURLString:url
-                                                    responseURLString:@"https://idontmatter.com"
-                                                         responseCode:200
-                                                     httpHeaderFields:@{}
-                                                     dictionaryAsJSON:@{@"subject" : authority,
-                                                                        @"links" : @[@{
-                                                                                         @"rel" : @"http://schemas.microsoft.com/rel/trusted-realm",
-                                                                                         @"href" : authority
-                                                                                         }]
-                                                                        }];
-    return response;
-}
-
-+ (ADTestURLResponse *)responseInvalidWebFinger:(NSString *)passiveEndpoint
-                                      authority:(NSString *)authority
-{
-    NSURL *endpointFullUrl = [NSURL URLWithString:passiveEndpoint.lowercaseString];
-    NSString *url = [NSString stringWithFormat:@"https://%@/.well-known/webfinger?resource=%@&x-client-Ver=" ADAL_VERSION_STRING, endpointFullUrl.host, authority];
-    
-    ADTestURLResponse *response = [ADTestURLResponse requestURLString:url
-                                                    responseURLString:@"https://idontmatter.com"
-                                                         responseCode:400
-                                                     httpHeaderFields:@{}
-                                                     dictionaryAsJSON:@{}];
-    return response;
-}
-
-+ (ADTestURLResponse *)responseInvalidWebFingerNotTrusted:(NSString *)passiveEndpoint
-                                                authority:(NSString *)authority
-{
-    NSURL *endpointFullUrl = [NSURL URLWithString:passiveEndpoint.lowercaseString];
-    NSString *url = [NSString stringWithFormat:@"https://%@/.well-known/webfinger?resource=%@&x-client-Ver=" ADAL_VERSION_STRING, endpointFullUrl.host, authority];
-    
-    ADTestURLResponse *response = [ADTestURLResponse requestURLString:url
-                                                    responseURLString:@"https://idontmatter.com"
-                                                         responseCode:200
-                                                     httpHeaderFields:@{}
-                                                     dictionaryAsJSON:@{@"subject" : authority,
-                                                                        @"links" : @[@{
-                                                                                         @"rel" : @"http://schemas.microsoft.com/rel/trusted-realm",
-                                                                                         @"href" : @"idontmatch.com"
-                                                                                         }]
-                                                                        }];
-    return response;
-}
-
-+ (ADTestURLResponse *)responseUnreachableWebFinger:(NSString *)passiveEndpoint
-                                          authority:(NSString *)authority
-
-{
-    (void)authority;
-    NSURL *endpointFullUrl = [NSURL URLWithString:passiveEndpoint.lowercaseString];
-    NSString *url = [NSString stringWithFormat:@"https://%@/.well-known/webfinger?resource=%@&x-client-Ver=" ADAL_VERSION_STRING, endpointFullUrl.host, authority];
-    
-    return [self serverNotFoundResponseForURLString:url];
-}
-
-
 + (ADTestURLResponse *)requestURLString:(NSString*)requestUrlString
                       responseURLString:(NSString*)responseUrlString
                            responseCode:(NSInteger)responseCode
@@ -235,6 +127,7 @@
     ADTestURLResponse *response = [ADTestURLResponse new];
     [response setRequestURL:[NSURL URLWithString:requestUrlString]];
     [response setResponseURL:responseUrlString code:responseCode headerFields:headerFields];
+    [response setRequestHeaders:[ADLogger adalId]];
     [response setJSONResponse:data];
     
     return response;
@@ -267,8 +160,8 @@
     ADTestURLResponse *response = [ADTestURLResponse new];
     [response setRequestURL:[NSURL URLWithString:requestUrlString]];
     [response setResponseURL:responseUrlString code:responseCode headerFields:headerFields];
-    response->_requestHeaders = requestHeaders;
-    response->_requestParamsBody = requestParams;
+    [response setRequestHeaders:requestHeaders];
+    [response setUrlFormEncodedBody:requestParams];
     [response setJSONResponse:data];
     
     return response;
@@ -321,7 +214,24 @@
 
 - (void)setRequestHeaders:(NSDictionary *)headers
 {
-    _requestHeaders = [headers copy];
+    if (headers)
+    {
+        _requestHeaders = [headers mutableCopy];
+    }
+    else
+    {
+        _requestHeaders = [NSMutableDictionary new];
+    }
+    
+    // These values come from ADClientMetrics and are dependent on a previous request, which breaks
+    // the isolation of the tests. For now the easiest path is to ignore them entirely.
+    if (!_requestHeaders[@"x-client-last-endpoint"])
+    {
+        _requestHeaders[@"x-client-last-error"] = [ADTestIgnoreSentinel sentinel];
+        _requestHeaders[@"x-client-last-endpoint"] = [ADTestIgnoreSentinel sentinel];
+        _requestHeaders[@"x-client-last-request"] = [ADTestIgnoreSentinel sentinel];
+        _requestHeaders[@"x-client-last-response-time"] = [ADTestIgnoreSentinel sentinel];
+    }
 }
 
 - (void)setRequestBody:(NSData *)body
@@ -329,47 +239,46 @@
     _requestBody = body;
 }
 
-- (void)setRequestJSONBody:(NSDictionary *)jsonBody
+- (void)setUrlFormEncodedBody:(NSDictionary *)formParameters
 {
-    _requestParamsBody = jsonBody;
+    _requestParamsBody = nil;
+    if (!formParameters)
+    {
+        return;
+    }
+    
+    _requestParamsBody = formParameters;
+    if (!_requestHeaders)
+    {
+        _requestHeaders = [NSMutableDictionary new];
+    }
+    
+    _requestHeaders[@"Content-Type"] = @"application/x-www-form-urlencoded";
+    NSString *urlEncoded = [formParameters adURLFormEncode];
+    _requestHeaders[@"Content-Length"] = [NSString stringWithFormat:@"%lu", (unsigned long)[urlEncoded lengthOfBytesUsingEncoding:NSUTF8StringEncoding]];
+}
+
+- (void)setWaitSemaphore:(dispatch_semaphore_t)sem
+{
+    _waitSemaphore = sem;
+}
+
+- (BOOL)matchesURL:(NSURL *)url
+           headers:(NSDictionary *)headers
+              body:(NSData *)body
+{
+    // We don't want the compiler to short circuit this out so that ways we print out all of the
+    // things in the response that doesn't match.
+    BOOL ret = YES;
+    ret = [self matchesURL:url] ? ret : NO;
+    ret = [self matchesHeaders:headers] ? ret : NO;
+    ret = [self matchesBody:body] ? ret : NO;
+    return ret;
 }
 
 - (BOOL)matchesURL:(NSURL *)url
 {
-    // Start with making sure the base URLs match up
-    if ([url.scheme caseInsensitiveCompare:_requestURL.scheme] != NSOrderedSame)
-    {
-        return NO;
-    }
-    
-    if ([url.host caseInsensitiveCompare:_requestURL.host] != NSOrderedSame)
-    {
-        return NO;
-    }
-    
-    // Then the relative portions
-    if ([url.relativePath caseInsensitiveCompare:_requestURL.relativePath] != NSOrderedSame)
-    {
-        return NO;
-    }
-    
-    // And lastly, the tricky part. Query Params can come in any order so we need to process them
-    // a bit instead of just a string compare
-    NSString *query = [url query];
-    if (![NSString adIsStringNilOrBlank:query])
-    {
-        NSDictionary *QPs = [NSDictionary adURLFormDecode:query];
-        if (![QPs isEqualToDictionary:_QPs])
-        {
-            return NO;
-        }
-    }
-    else if (_QPs)
-    {
-        return NO;
-    }
-    
-    return YES;
+    return [_requestURL matchesURL:url];
 }
 
 - (BOOL)matchesBody:(NSData *)body
@@ -383,9 +292,9 @@
     
     if (_requestParamsBody)
     {
-        NSString* string = [[NSString alloc] initWithData:body encoding:NSUTF8StringEncoding];
-        id obj = [NSDictionary adURLFormDecode:string];
-        return [obj isEqual:_requestParamsBody];
+        NSString * string = [[NSString alloc] initWithData:body encoding:NSUTF8StringEncoding];
+        NSDictionary *obj = [NSDictionary adURLFormDecode:string];
+        return [_requestParamsBody compareAndPrintDiff:obj dictionaryDescription:@"URL Encoded Body Parameters"];
     }
     
     if (_requestBody)
@@ -400,28 +309,21 @@
 {
     if (!_requestHeaders)
     {
-        return YES;
+        if (!headers || headers.count == 0)
+        {
+            return YES;
+        }
+        // This wiil spit out to console the extra stuff that we weren't expecting
+        [@{} compareAndPrintDiff:headers dictionaryDescription:@"Request Headers"];
+        return NO;
     }
     
-    BOOL matches = YES;
-    
-    for (id key in _requestHeaders)
-    {
-        id header = [_requestHeaders objectForKey:key];
-        id matchHeader = [headers objectForKey:key];
-        if (!matchHeader)
-        {
-            AD_LOG_ERROR_F(@"Request is missing header", AD_FAILED, nil, @"%@", key);
-            matches = NO;
-        }
-        else if (![header isEqual:matchHeader])
-        {
-            AD_LOG_ERROR_F(@"Request headers do not match", AD_FAILED, nil, @"expected: \"%@\" actual: \"%@\"", header, matchHeader);
-            matches = NO;
-        }
-    }
-    
-    return matches;
+    return [_requestHeaders compareAndPrintDiff:headers dictionaryDescription:@"Request Headers"];
+}
+
+- (NSString *)description
+{
+    return [NSString stringWithFormat:@"<%@: %@>", NSStringFromClass(self.class), _requestURL];
 }
 
 @end

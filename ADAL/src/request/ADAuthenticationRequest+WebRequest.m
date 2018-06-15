@@ -37,6 +37,7 @@
 #import "ADAuthenticationRequest.h"
 #import "ADTokenCacheItem+Internal.h"
 #import "ADWebAuthRequest.h"
+#import "NSString+ADURLExtensions.h"
 
 #import <libkern/OSAtomic.h>
 
@@ -45,17 +46,25 @@
 - (void)executeRequest:(NSDictionary *)request_data
             completion:(ADAuthenticationCallback)completionBlock
 {
-    NSString* urlString = [_context.authority stringByAppendingString:OAUTH2_TOKEN_SUFFIX];
+    NSString *authority = [NSString adIsStringNilOrBlank:_cloudAuthority] ? _context.authority : _cloudAuthority;
+    NSString* urlString = [authority stringByAppendingString:OAUTH2_TOKEN_SUFFIX];
     ADWebAuthRequest* req = [[ADWebAuthRequest alloc] initWithURL:[NSURL URLWithString:urlString]
                                                           context:_requestParams];
     [req setRequestDictionary:request_data];
-    [req sendRequest:^(NSDictionary *response)
+    [req sendRequest:^(ADAuthenticationError *error, NSDictionary *response)
      {
+         if (error)
+         {
+             completionBlock([ADAuthenticationResult resultFromError:error]);
+             [req invalidate];
+             return;
+         }
+         
          //Prefill the known elements in the item. These can be overridden by the response:
          ADTokenCacheItem* item = [ADTokenCacheItem new];
          item.resource = [_requestParams resource];
          item.clientId = [_requestParams clientId];
-         item.authority = _context.authority;
+         item.authority = authority;
          ADAuthenticationResult* result = [item processTokenResponse:response
                                                          fromRefresh:NO
                                                 requestCorrelationId:[_requestParams correlationId]];
@@ -76,18 +85,20 @@
         
         if (![NSString adIsStringNilOrBlank:authorizationServer] && ![NSString adIsStringNilOrBlank:resource])
         {
-            AD_LOG_VERBOSE_F(@"State", [_requestParams correlationId], @"The authorization server returned the following state: %@", state);
+            AD_LOG_VERBOSE_PII(_requestParams.correlationId, @"The authorization server returned the following state: %@", state);
             return YES;
         }
     }
-    AD_LOG_WARN_F(@"State error", [_requestParams correlationId], @"Missing or invalid state returned: %@", state);
+    
+    AD_LOG_WARN(_requestParams.correlationId, @"Missing or invalid state returned");
+    AD_LOG_WARN_PII(_requestParams.correlationId, @"Missing or invalid state returned state: %@", state);
     return NO;
 }
 
 // Encodes the state parameter for a protocol message
 - (NSString *)encodeProtocolState
 {
-    return [[[NSMutableDictionary dictionaryWithObjectsAndKeys:[_requestParams authority], @"a", [_requestParams resource], @"r", _scope, @"s", nil]
+    return [[[NSMutableDictionary dictionaryWithObjectsAndKeys:[_requestParams authority], @"a", [_requestParams resource], @"r", _requestParams.scope, @"s", nil]
              adURLFormEncode] adBase64UrlEncode];
 }
 
@@ -165,7 +176,8 @@
     THROW_ON_NIL_ARGUMENT(completionBlock);
     [self ensureRequest];
     
-    AD_LOG_VERBOSE_F(@"Requesting authorization code.", _requestParams.correlationId, @"Requesting authorization code for resource: %@", _requestParams.resource);
+    AD_LOG_VERBOSE(_requestParams.correlationId, @"Requesting authorization code");
+    AD_LOG_VERBOSE_PII(_requestParams.correlationId, @"Requesting authorization code for resource: %@", _requestParams.resource);
     
     NSString* startUrl = [self generateQueryStringForRequestType:OAUTH2_CODE];
     
@@ -173,10 +185,10 @@
     {
         [ADAuthenticationRequest releaseExclusionLock]; // Allow other operations that use the UI for credentials.
          
-         NSString* code = nil;
-         if (!error)
-         {
-             
+        NSString *code = nil;
+        
+        if (!error)
+        {
              if ([[[end scheme] lowercaseString] isEqualToString:@"msauth"]) {
 #if AD_BROKER
                  
@@ -185,15 +197,22 @@
                  {
                      NSDictionary* queryParams = [end adQueryParameters];
                      code = [queryParams objectForKey:OAUTH2_CODE];
+                     [self setCloudInstanceHostname:[queryParams objectForKey:AUTH_CLOUD_INSTANCE_HOST_NAME]];
                  }
                  else
                  {
-                     NSDictionary* userInfo = @{
-                                                @"username": [[NSDictionary adURLFormDecode:[end query]] valueForKey:@"username"],
-                                                };
+                     NSMutableDictionary *userInfoDictionary = [NSMutableDictionary dictionary];
+                     NSDictionary *queryParameters = [NSDictionary adURLFormDecode:[end query]];
+                     NSString *userName = [queryParameters valueForKey:AUTH_USERNAME_KEY];
+                     
+                     if (![NSString adIsStringNilOrBlank:userName])
+                     {
+                         [userInfoDictionary setObject:userName forKey:AUTH_USERNAME_KEY];
+                     }
+                     
                      NSError* err = [NSError errorWithDomain:ADAuthenticationErrorDomain
                                                         code:AD_ERROR_SERVER_WPJ_REQUIRED
-                                                    userInfo:userInfo];
+                                                    userInfo:userInfoDictionary];
                      error = [ADAuthenticationError errorFromNSError:err errorDetails:@"work place join is required" correlationId:_requestParams.correlationId];
                  }
 #else
@@ -223,6 +242,9 @@
                                                                         errorDetails:@"The authorization server did not return a valid authorization code."
                                                                        correlationId:[_requestParams correlationId]];
                      }
+                     
+                     [self setCloudInstanceHostname:[parameters objectForKey:AUTH_CLOUD_INSTANCE_HOST_NAME]];
+                     
                  }
              }
          }
@@ -248,9 +270,9 @@
                        @"1", @"nux",
                        @"none", @"prompt", nil];
         
-        if (_scope)
+        if (![NSString adIsStringNilOrBlank:_requestParams.scope])
         {
-            [requestData setObject:_scope forKey:OAUTH2_SCOPE];
+            [requestData setObject:_requestParams.scope forKey:OAUTH2_SCOPE];
         }
         
         if ([_requestParams identifier] && [[_requestParams identifier] isDisplayable] && ![NSString adIsStringNilOrBlank:[_requestParams identifier].userId])
@@ -263,14 +285,19 @@
                                                               context:_requestParams];
         [req setIsGetRequest:YES];
         [req setRequestDictionary:requestData];
-        [req sendRequest:^(NSDictionary * parameters)
+        [req sendRequest:^(ADAuthenticationError *error, NSDictionary * parameters)
          {
+             if (error && ![parameters objectForKey:@"url"]) // auth code and OAuth2 error could be in endURL
+             {
+                 requestCompletion(error, nil);
+                 [req invalidate];
+                 return;
+             }
              
-             NSURL* endURL = nil;
-             ADAuthenticationError* error = nil;
-             
-             //OAuth2 error may be passed by the server
-             endURL = [parameters objectForKey:@"url"];
+             //Auth code and OAuth2 error may be passed in endURL
+             NSURL* endURL = [parameters objectForKey:@"url"];
+             error = nil;
+
              if (!endURL)
              {
                  // If the request was not silent only then launch the webview

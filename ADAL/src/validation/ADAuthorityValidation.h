@@ -24,6 +24,9 @@
 
 #import <Foundation/Foundation.h>
 
+@class ADAuthorityValidationResponse;
+@class ADAadAuthorityCache;
+
 /*! The completion block declaration. */
 typedef void(^ADAuthorityValidationCallback)(BOOL validated, ADAuthenticationError *error);
 
@@ -31,9 +34,10 @@ typedef void(^ADAuthorityValidationCallback)(BOOL validated, ADAuthenticationErr
  The class is thread-safe. */
 @interface ADAuthorityValidation : NSObject
 {
-    NSMutableDictionary *_validatedAdfsAuthorities;
-    NSMutableSet *_validatedADAuthorities;
+    ADAadAuthorityCache *_aadCache;
 }
+
+@property (readonly) ADAadAuthorityCache *aadCache;
 
 + (ADAuthorityValidation *)sharedInstance;
 
@@ -46,17 +50,29 @@ typedef void(^ADAuthorityValidationCallback)(BOOL validated, ADAuthenticationErr
 - (BOOL)addValidAuthority:(NSURL *)authority domain:(NSString *)domain;
 - (BOOL)isAuthorityValidated:(NSURL *)authority domain:(NSString *)domain;
 // Cache - AAD
-- (BOOL)isAuthorityValidated:(NSURL *)authorityHost;
-- (BOOL)addValidAuthority:(NSURL *)authorityHost;
 
 /*!
- Validates an authority.
+ Checks an authority.
+ For AAD, if metadata exists for an endpoint, we’ll want to retrieve that regardless of
+ whether authority validation is turned on.
  
  @param requestParams        Request parameters
+ @param validateAuthority    authority validation check
  @param completionBlock      The block to execute upon completion.
-
+ 
  */
-- (void)validateAuthority:(ADRequestParameters*)requestParams
-          completionBlock:(ADAuthorityValidationCallback)completionBlock;
+- (void)checkAuthority:(ADRequestParameters*)requestParams
+     validateAuthority:(BOOL)validateAuthority
+       completionBlock:(ADAuthorityValidationCallback)completionBlock;
+
+- (void)addInvalidAuthority:(NSString *)authority;
+
+- (NSURL *)networkUrlForAuthority:(NSURL *)authority
+                          context:(id<ADRequestContext>)context;
+- (NSURL *)cacheUrlForAuthority:(NSURL *)authority
+                        context:(id<ADRequestContext>)context;
+- (NSArray<NSURL *> *)cacheAliasesForAuthority:(NSURL *)authority;
 
 @end
+
+

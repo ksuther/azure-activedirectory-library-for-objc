@@ -30,7 +30,6 @@ NSString* const ADUnknownError = @"Uknown error.";
 NSString* const ADCredentialsNeeded = @"The user credentials are needed to obtain access token. Please call the non-silent acquireTokenWithResource methods.";
 NSString* const ADInteractionNotSupportedInExtension = @"Interaction is not supported in an app extension.";
 NSString* const ADServerError = @"The authentication server returned an error: %@.";
-NSString* const ADBrokerAppIdentifier = @"com.microsoft.azureadauthenticator";
 NSString* const ADRedirectUriInvalidError = @"Your AuthenticationContext is configured to allow brokered authentication but your redirect URI is not setup properly. Make sure your redirect URI is in the form of <app-scheme>://<bundle-id> (e.g. \"x-msauth-testapp://com.microsoft.adal.testapp\") and that the \"app-scheme\" you choose is registered in your application's info.plist.";
 
 @implementation ADAuthenticationContext (Internal)
@@ -112,8 +111,8 @@ NSString* const ADRedirectUriInvalidError = @"Your AuthenticationContext is conf
                                 nil;
         return [ADAuthenticationError OAuthServerError:serverOAuth2Error description:errorDetails code:errorCode correlationId:correlationId];
     }
-    //In the case of more generic error, e.g. server unavailable, DNS error or no internet connection, the error object will be directly placed in the dictionary:
-    return [dictionary objectForKey:AUTH_NON_PROTOCOL_ERROR];
+    
+    return nil;
 }
 
 //Returns YES if we shouldn't attempt other means to get access token.

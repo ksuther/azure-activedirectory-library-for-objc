@@ -121,13 +121,28 @@
         [request_data setObject:[_requestParams resource] forKey:OAUTH2_RESOURCE];
     }
     
+    if (![NSString adIsStringNilOrBlank:_requestParams.scope])
+    {
+        request_data[OAUTH2_SCOPE] = _requestParams.scope;
+    }
+    
     ADWebAuthRequest* webReq =
     [[ADWebAuthRequest alloc] initWithURL:[NSURL URLWithString:[[_requestParams authority] stringByAppendingString:OAUTH2_TOKEN_SUFFIX]]
                                   context:_requestParams];
     [webReq setRequestDictionary:request_data];
-    AD_LOG_INFO_F(@"Attempting to acquire an access token from refresh token", nil, @"clientId: '%@'; resource: '%@';", [_requestParams clientId], [_requestParams resource]);
-    [webReq sendRequest:^(NSDictionary *response)
+    
+    AD_LOG_INFO(nil, @"Attempting to acquire an access token from refresh token");
+    AD_LOG_INFO_PII(nil, @"Attempting to acquire an access token from refresh token clientId: '%@', resource: '%@'", _requestParams.clientId, _requestParams.resource);
+    
+    [webReq sendRequest:^(ADAuthenticationError *error, NSDictionary *response)
      {
+         if (error)
+         {
+             completionBlock([ADAuthenticationResult resultFromError:error]);
+             [webReq invalidate];
+             return;
+         }
+         
          ADTokenCacheItem* resultItem = (cacheItem) ? cacheItem : [ADTokenCacheItem new];
          
          //Always ensure that the cache item has all of these set, especially in the broad token case, where the passed item
@@ -224,7 +239,8 @@
              msg = [NSString stringWithFormat:@"Acquire Token with Refresh Token %@.", resultStatus];
          }
          
-         AD_LOG_INFO_F(msg, [_requestParams correlationId], @"clientId: '%@'; resource: '%@';", [_requestParams clientId], [_requestParams resource]);
+         AD_LOG_INFO(_requestParams.correlationId, @"%@", msg);
+         AD_LOG_INFO_PII(_requestParams.correlationId, @"%@ clientId: '%@', resource: '%@'", msg, _requestParams.clientId, _requestParams.resource);
          
          if ([ADAuthenticationContext isFinalResult:result])
          {

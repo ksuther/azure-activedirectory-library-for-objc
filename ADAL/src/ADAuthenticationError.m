@@ -30,6 +30,8 @@ NSString* const ADKeychainErrorDomain = @"ADKeychainErrorDomain";
 NSString* const ADHTTPErrorCodeDomain = @"ADHTTPErrorCodeDomain";
 NSString* const ADOAuthServerErrorDomain = @"ADOAuthServerErrorDomain";
 
+NSString* const ADHTTPHeadersKey = @"ADHTTPHeadersKey";
+
 NSString* const ADInvalidArgumentMessage = @"The argument '%@' is invalid. Value:%@";
 
 NSString* const ADCancelError = @"The user has cancelled the authorization.";
@@ -95,19 +97,8 @@ NSString* const ADNonHttpsRedirectError = @"The server has redirected to a non-h
     if (!quiet)
     {
         NSString* codeStr = [self getStringForErrorCode:code domain:domain];
-        NSString* message = [NSString stringWithFormat:@"Error raised: (Domain: \"%@\" Code: %@ ProtocolCode: \"%@\" Details: \"%@\"", domain, codeStr, protocolCode, details];
-        NSDictionary* logDict = nil;
-        if (correlationId)
-        {
-            logDict = @{ @"error" : self,
-                         @"correlationId" : correlationId };
-        }
-        else
-        {
-            logDict = @{ @"error" : self };
-        }
-        
-        AD_LOG_ERROR_DICT(message, code, correlationId, logDict, nil);
+        AD_LOG_ERROR(correlationId, @"Error raised: (Domain: \"%@\" Code: %@ ProtocolCode: \"%@\"", domain, codeStr, protocolCode);
+        AD_LOG_ERROR_PII(correlationId, @"Error raised: (Domain: \"%@\" Code: %@ ProtocolCode: \"%@\". Error details: %@", domain, codeStr, protocolCode, details);
     }
     
     return self;
@@ -167,6 +158,20 @@ NSString* const ADNonHttpsRedirectError = @"The server has redirected to a non-h
                             errorDetails:errorDetails
                            correlationId:correlationId
                                 userInfo:error.userInfo];
+}
+
++ (ADAuthenticationError *)errorWithDomain:(NSString *)domain
+                                      code:(NSInteger)code
+                         protocolErrorCode:(NSString *)protocolCode
+                              errorDetails:(NSString *)errorDetails
+                             correlationId:(NSUUID *)correlationId
+{
+    return [self errorWithDomainInternal:domain
+                                    code:code
+                       protocolErrorCode:protocolCode
+                            errorDetails:errorDetails
+                           correlationId:correlationId
+                                userInfo:nil];
 }
 
 + (ADAuthenticationError*)errorFromAuthenticationError:(NSInteger)code
@@ -250,16 +255,19 @@ NSString* const ADNonHttpsRedirectError = @"The server has redirected to a non-h
                                 userInfo:nil];
 }
 
-+ (ADAuthenticationError *)HTTPErrorCode:(NSInteger)code
-                                    body:(NSString *)body
-                           correlationId:(NSUUID *)correlationId
++ (ADAuthenticationError *)errorFromHTTPErrorCode:(NSInteger)code
+                                             body:(NSString *)body
+                                          headers:(NSDictionary *)headers
+                                    correlationId:(NSUUID *)correlationId
 {
+    NSDictionary *userInfo = headers ? @{ADHTTPHeadersKey : headers} : nil;
+    
     return [self errorWithDomainInternal:ADHTTPErrorCodeDomain
                                     code:code
                        protocolErrorCode:nil
                             errorDetails:body
                            correlationId:correlationId
-                                userInfo:nil];
+                                userInfo:userInfo];
 }
 
 + (ADAuthenticationError *)OAuthServerError:(NSString *)protocolCode

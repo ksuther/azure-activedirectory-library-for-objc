@@ -87,11 +87,6 @@
     [self loadCache];
 }
 
-- (void)tombstoneTokenAtPath:(NSIndexPath*)indexPath
-{
-    // current delete implementation will tombstone MRRTs.
-    [self deleteTokenAtPath:indexPath];
-}
 
 - (void)expireTokenAtPath:(NSIndexPath*)indexPath
 {
@@ -105,7 +100,7 @@
     [self loadCache];
 }
 
-- (void)deleteAllAtPath:(NSIndexPath*)indexPath
+- (void)deleteAllForUserIdClientIdAtPath:(NSIndexPath*)indexPath
 {
     ADTestAppCacheRowItem* rowItem = [self cacheItemForPath:indexPath];
     if (!rowItem.clientId)
@@ -118,6 +113,21 @@
     
     ADKeychainTokenCache* cache = [ADKeychainTokenCache new];
     [cache removeAllForUserId:userId clientId:rowItem.title error:nil];
+    
+    [self loadCache];
+}
+
+- (void)deleteAllForClientIdAtPath:(NSIndexPath*)indexPath
+{
+    ADTestAppCacheRowItem* rowItem = [self cacheItemForPath:indexPath];
+    if (!rowItem.clientId)
+    {
+        NSLog(@"Trying to delete all from a non-client-id item?");
+        return;
+    }
+    
+    ADKeychainTokenCache* cache = [ADKeychainTokenCache new];
+    [cache removeAllForClientId:rowItem.title error:nil];
     
     [self loadCache];
 }
@@ -161,15 +171,6 @@
         [self deleteTokenAtPath:indexPath];
     }];
     
-    UITableViewRowAction* tombstoneTokenAction =
-    [UITableViewRowAction rowActionWithStyle:UITableViewRowActionStyleNormal
-                                       title:@"Tombstone"
-                                     handler:^(UITableViewRowAction * _Nonnull action, NSIndexPath * _Nonnull indexPath)
-    {
-        [self tombstoneTokenAtPath:indexPath];
-    }];
-    [tombstoneTokenAction setBackgroundColor:[UIColor brownColor]];
-    
     UITableViewRowAction* invalidateAction =
     [UITableViewRowAction rowActionWithStyle:UITableViewRowActionStyleNormal
                                        title:@"Invalidate"
@@ -189,17 +190,26 @@
     [expireTokenAction setBackgroundColor:[UIColor orangeColor]];
     
     
-    UITableViewRowAction* deleteAllAction =
+    UITableViewRowAction* deleteAllForUserIdClientIdAction =
     [UITableViewRowAction rowActionWithStyle:UITableViewRowActionStyleDestructive
-                                       title:@"Delete All"
+                                       title:@"Delete this user for this Client"
                                      handler:^(UITableViewRowAction * _Nonnull action, NSIndexPath * _Nonnull indexPath)
     {
-        [self deleteAllAtPath:indexPath];
+        [self deleteAllForUserIdClientIdAtPath:indexPath];
     }];
+    [deleteAllForUserIdClientIdAction setBackgroundColor:[UIColor orangeColor]];
+    
+    UITableViewRowAction* deleteAllForClientIdAction =
+    [UITableViewRowAction rowActionWithStyle:UITableViewRowActionStyleDestructive
+                                       title:@"Delete all users for this Client!"
+                                     handler:^(UITableViewRowAction * _Nonnull action, NSIndexPath * _Nonnull indexPath)
+     {
+         [self deleteAllForClientIdAtPath:indexPath];
+     }];
     
     _tokenRowActions = @[ deleteTokenAction, expireTokenAction ];
-    _mrrtRowActions = @[ tombstoneTokenAction, invalidateAction ];
-    _clientIdRowActions = @[ deleteAllAction ];
+    _mrrtRowActions = @[ deleteTokenAction, invalidateAction ];
+    _clientIdRowActions = @[ deleteAllForClientIdAction, deleteAllForUserIdClientIdAction ];
     
     [[NSNotificationCenter defaultCenter] addObserverForName:ADTestAppCacheChangeNotification
                                                       object:nil
@@ -254,14 +264,6 @@
         NSArray* allItems = [cache allItems:nil];
         _cacheMap = [NSMutableDictionary new];
         for (ADTokenCacheItem* item in allItems)
-        {
-            [self addTokenToCacheMap:item];
-        }
-        
-        
-        // Add the tombstones as well
-        NSArray* allTombstones = [cache allTombstones:nil];
-        for (ADTokenCacheItem* item in allTombstones)
         {
             [self addTokenToCacheMap:item];
         }
@@ -381,11 +383,8 @@
     else
     {
         [cell setBackgroundColor:[UIColor whiteColor]];
-        if (cacheItem.item.tombstone)
-        {
-            [[cell textLabel] setTextColor:[UIColor brownColor]];
-        }
-        else if ([cacheItem.item.refreshToken isEqualToString:@"bad-refresh-token"])
+
+        if ([cacheItem.item.refreshToken isEqualToString:@"bad-refresh-token"])
         {
             [[cell textLabel] setTextColor:[UIColor yellowColor]];
         }

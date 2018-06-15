@@ -47,16 +47,24 @@ typedef enum
 /*! @return the current log level */
 + (ADAL_LOG_LEVEL)getLevel;
 
+/*!
+ ADAL provides logging callbacks that assist in diagnostics. There is a boolean value in the logging callback that indicates whether the message contains user information. If piiEnabled is set to NO, the callback will not be triggered for log messages that contain any user information. By default the library will not return any messages with user information in them.
+ @param piiEnabled     PII on/off flag.
+ */
++ (void)setPiiEnabled:(BOOL)piiEnabled;
+
+/*! @return the current pii flag value */
++ (BOOL)getPiiEnabled;
 
 /*!
-    The LogCallback block for the ADAL logger
+ The LogCallback block for the ADAL logger
  
-    @param  logLevel        The level of the log message
-    @param  message         A short log message describing the event that occurred, this string will not contain PII.
-    @param  additionalInfo  A longer message that may contain PII and other details relevant to the event.
-    @param  errorCode       An integer error code if the log message is an error.
-    @param  userInfo        A dictionary with other information relevant to the log message. The information varies,
-                            for most error messages the error object will be in the "error" key.
+ @param  logLevel        The level of the log message
+ @param  message         A short log message describing the event that occurred, this string will not contain PII.
+ @param  additionalInfo  A longer message that may contain PII and other details relevant to the event.
+ @param  errorCode       An integer error code if the log message is an error.
+ @param  userInfo        A dictionary with other information relevant to the log message. The information varies,
+ for most error messages the error object will be in the "error" key.
  */
 typedef void (^LogCallback)(ADAL_LOG_LEVEL logLevel,
                             NSString *message,
@@ -69,7 +77,21 @@ typedef void (^LogCallback)(ADAL_LOG_LEVEL logLevel,
  
     @param callback     The block log messages are sent to. See the documentation for LogCallback for more information.
  */
-+ (void)setLogCallBack:(LogCallback)callback;
++ (void)setLogCallBack:(LogCallback)callback __attribute((deprecated("Use the setLoggerCallback: method instead.")));
+
+
+/*!
+ The LogCallback block for the ADAL logger
+ 
+ @param  logLevel        The level of the log message
+ @param  message         A short log message describing the event that occurred, this string will not contain PII.
+ @param  containsPii     If the message might contain Personally Identifiable Information (PII) this will be true. Log messages possibly containing PII will not be sent to the callback unless piiEnabled is set to YES on the logger.
+ */
+typedef void (^ADLoggerCallback)(ADAL_LOG_LEVEL logLevel,
+                                 NSString *message,
+                                 BOOL containsPii);
+
++ (void)setLoggerCallback:(ADLoggerCallback)callback;
 
 /*!
     Turns on or off ADAL printing log messages to the console via NSLog. On by default.

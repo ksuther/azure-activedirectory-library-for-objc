@@ -134,7 +134,7 @@ typedef enum
 /*!
     Initializes an instance of ADAuthenticationContext with the provided parameters.
  
-    @param authority            The AAD or ADFS authority. Example: @"https://login.windows.net/contoso.com"
+    @param authority            The AAD or ADFS authority. Example: @"https://login.microsoftonline.com/contoso.com"
     @param validateAuthority    Specifies if the authority should be validated.
     @param sharedGroup          The keychain sharing group to use for the ADAL token cache (iOS Only)
     @param error                (Optional) Any extra error details, if the method fails
@@ -151,7 +151,7 @@ typedef enum
 /*!
     Initializes an instance of ADAuthenticationContext with the provided parameters.
  
-    @param authority            The AAD or ADFS authority. Example: @"https://login.windows.net/contoso.com"
+    @param authority            The AAD or ADFS authority. Example: @"https://login.microsoftonline.com/contoso.com"
     @param validateAuthority    Specifies if the authority should be validated.
     @param delegate             An object conforming to the ADTokenCacheDelegate protocol, this is mandatory
                                 if you wish to persist tokens on OS X.
@@ -168,7 +168,7 @@ typedef enum
 /*!
     Initializes an instance of ADAuthenticationContext with the provided parameters.
  
-    @param authority            The AAD or ADFS authority. Example: @"https://login.windows.net/contoso.com"
+    @param authority            The AAD or ADFS authority. Example: @"https://login.microsoftonline.com/contoso.com"
     @param validateAuthority    Specifies if the authority should be validated.
     @param error                (Optional) Any extra error details, if the method fails
  
@@ -182,7 +182,7 @@ typedef enum
 /*!
     Creates an instance of ADAuthenticationContext with the provided parameters.
  
-    @param authority            The AAD or ADFS authority. Example: @"https://login.windows.net/contoso.com"
+    @param authority            The AAD or ADFS authority. Example: @"https://login.microsoftonline.com/contoso.com"
     @param error                (Optional) Any extra error details, if the method fails
  
     @return An instance of ADAuthenticationContext, nil if it fails.
@@ -193,7 +193,7 @@ typedef enum
 /*!
     Creates an instance of ADAuthenticationContext with the provided parameters.
  
-    @param authority            The AAD or ADFS authority. Example: @"https://login.windows.net/contoso.com"
+    @param authority            The AAD or ADFS authority. Example: @"https://login.microsoftonline.com/contoso.com"
     @param validate             Specifies if the authority should be validated.
     @param error                (Optional) Any extra error details, if the method fails
  
@@ -207,7 +207,7 @@ typedef enum
 /*!
     Creates an instance of ADAuthenticationContext with the provided parameters.
  
-    @param authority            The AAD or ADFS authority. Example: @"https://login.windows.net/contoso.com"
+    @param authority            The AAD or ADFS authority. Example: @"https://login.microsoftonline.com/contoso.com"
     @param sharedGroup          The keychain sharing group to use for the ADAL token cache (iOS Only)
     @param error                (Optional) Any extra error details, if the method fails
  
@@ -220,7 +220,7 @@ typedef enum
 /*!
     Creates an instance of ADAuthenticationContext with the provided parameters.
  
-    @param authority            The AAD or ADFS authority. Example: @"https://login.windows.net/contoso.com"
+    @param authority            The AAD or ADFS authority. Example: @"https://login.microsoftonline.com/contoso.com"
     @param validate             Specifies if the authority should be validated.
     @param sharedGroup          The keychain sharing group to use for the ADAL token cache (iOS Only)
     @param error                (Optional) Any extra error details, if the method fails
@@ -435,6 +435,21 @@ typedef enum
                            redirectUri:(NSURL*)redirectUri
                                 userId:(NSString*)userId
                        completionBlock:(ADAuthenticationCallback)completionBlock;
+
+/*! Follows the OAuth2 protocol (RFC 6749). The function will use the refresh token provided to get access token.
+ This method will not show UI for the user to reauthorize resource usage.
+ If the call fails, error will be included in the result.
+ @param refreshToken The refresh token provided in order to get acces token.
+ @param resource The resource whose token is needed.
+ @param clientId The client identifier
+ @param redirectUri The redirect URI according to OAuth2 protocol
+ @param completionBlock The block to execute upon completion. You can use embedded block, e.g. "^(ADAuthenticationResult res){ <your logic here> }"
+ */
+- (void)acquireTokenWithRefreshToken:(NSString *)refreshToken
+                            resource:(NSString *)resource
+                            clientId:(NSString *)clientId
+                         redirectUri:(NSURL *)redirectUri
+                     completionBlock:(ADAuthenticationCallback)completionBlock;
 
 @end
 

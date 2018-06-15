@@ -88,6 +88,7 @@
     _redirectUri.stringValue = settings.redirectUri.absoluteString;
     _resource.stringValue = settings.resource;
     _userIdField.stringValue = settings.defaultUser ? settings.defaultUser : @"";
+    _extraQueryParamsField.stringValue = settings.extraQueryParameters ? settings.extraQueryParameters : @"";
 }
 
 - (IBAction)selectedProfileChanged:(id)sender
@@ -99,6 +100,8 @@
 - (void)windowDidLoad
 {
     [super windowDidLoad];
+    
+    self.window.title = [NSString stringWithFormat:@"Acquire Token (%@)", ADAL_VERSION_NSSTRING];
     
     [self.window.contentView addSubview:_acquireSettingsView];
     [_authView setHidden:YES];
@@ -208,7 +211,7 @@
             break;
     }
     
-    NSString* resultText = [NSString stringWithFormat:@"{\n\tstatus = %@;\n\terror = %@\n\tcorrelation ID = %@\n\ttokenCacheItem = %@\n}", resultStatus, result.error, result.correlationId, result.tokenCacheItem];
+    NSString* resultText = [NSString stringWithFormat:@"{\n\tstatus = %@;\n\terror = %@\n\tcorrelation ID = %@\n\ttokenCacheItem = %@\n\tauthority = %@\n}", resultStatus, result.error, result.correlationId, result.tokenCacheItem, result.authority];
     
     [_resultView setString:resultText];
     
@@ -237,6 +240,9 @@
     NSString* resource = [settings resource];
     NSString* clientId = [settings clientId];
     NSURL* redirectUri = [settings redirectUri];
+    NSString* extraQueryParameters = _extraQueryParamsField.stringValue;
+    NSString* claims = _claimsField.stringValue;
+    
     ADUserIdentifier* identifier = [self identifier];
     
     BOOL validateAuthority = _validateAuthority.selectedSegment == 0;
@@ -269,7 +275,8 @@
                           redirectUri:redirectUri
                        promptBehavior:_promptBehavior
                        userIdentifier:identifier
-                 extraQueryParameters:nil
+                 extraQueryParameters:extraQueryParameters
+                               claims:claims
                       completionBlock:^(ADAuthenticationResult *result)
      {
          if (fBlockHit)
@@ -278,8 +285,6 @@
              return;
          }
          fBlockHit = YES;
-         
-         
          
          dispatch_async(dispatch_get_main_queue(), ^{
              [self updateResultView:result];

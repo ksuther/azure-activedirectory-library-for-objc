@@ -26,8 +26,11 @@
 #import "ADKeychainTokenCache+Internal.h"
 #import "ADTestAppAcquireLayoutBuilder.h"
 #import "ADTestAppProfileViewController.h"
+#import "ADTestAppClaimsPickerController.h"
 
 @interface ADTestAppAcquireTokenViewController () <UITextFieldDelegate>
+
+@property (nonatomic) ADTestAppClaimsPickerController *claimsPickerController;
 
 @end
 
@@ -35,6 +38,8 @@
 {
     UIView* _acquireSettingsView;
     UITextField* _userIdField;
+    UITextField* _extraQueryParamsField;
+    UITextField* _claimsField;
     UISegmentedControl* _userIdType;
     
     UISegmentedControl* _promptBehavior;
@@ -94,6 +99,36 @@
     return view;
 }
 
+- (UIView*)createThreeItemLayoutView:(UIView*)item1
+                               item2:(UIView*)item2
+                               item3:(UIView*)item3
+{
+    item1.translatesAutoresizingMaskIntoConstraints = NO;
+    item2.translatesAutoresizingMaskIntoConstraints = NO;
+    item3.translatesAutoresizingMaskIntoConstraints = NO;
+    
+    UIView* view = [[UIView alloc] init];
+    view.translatesAutoresizingMaskIntoConstraints = NO;
+    [view addSubview:item1];
+    [view addSubview:item2];
+    [view addSubview:item3];
+    
+    NSDictionary* views = @{@"item1" : item1, @"item2" : item2, @"item3" : item3 };
+    NSArray* verticalConstraints1 = [NSLayoutConstraint constraintsWithVisualFormat:@"V:|[item1(20)]|" options:0 metrics:NULL views:views];
+    NSArray* verticalConstraints2 = [NSLayoutConstraint constraintsWithVisualFormat:@"V:|[item2(20)]|" options:0 metrics:NULL views:views];
+    NSArray* verticalConstraints3 = [NSLayoutConstraint constraintsWithVisualFormat:@"V:|[item3(20)]|" options:0 metrics:NULL views:views];
+    NSArray* horizontalConstraints = [NSLayoutConstraint constraintsWithVisualFormat:@"H:|[item1]-[item2]-[item3]|" options:0 metrics:NULL views:views];
+    
+    [view addConstraints:verticalConstraints1];
+    [view addConstraints:verticalConstraints2];
+    [view addConstraints:verticalConstraints3];
+    [view addConstraints:horizontalConstraints];
+    
+    
+    return view;
+}
+
+
 - (UIView*)createSettingsAndResultView
 {
     CGRect screenFrame = UIScreen.mainScreen.bounds;
@@ -114,7 +149,7 @@
     _userIdType.selectedSegmentIndex = 0;
     [layout addControl:_userIdType title:@"idType"];
     
-    _promptBehavior = [[UISegmentedControl alloc] initWithItems:@[@"Always", @"Auto"]];
+    _promptBehavior = [[UISegmentedControl alloc] initWithItems:@[@"Always", @"Auto", @"Force"]];
     _promptBehavior.selectedSegmentIndex = 0;
     [layout addControl:_promptBehavior title:@"prompt"];
     
@@ -139,6 +174,21 @@
     _validateAuthority = [[UISegmentedControl alloc] initWithItems:@[@"Yes", @"No"]];
     [layout addControl:_validateAuthority title:@"valAuth"];
     
+    _extraQueryParamsField = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 400, 20)];
+    _extraQueryParamsField.borderStyle = UITextBorderStyleRoundedRect;
+    _extraQueryParamsField.delegate = self;
+    [layout addControl:_extraQueryParamsField title:@"EQP"];
+    
+    _claimsField = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 400, 20)];
+    _claimsField.borderStyle = UITextBorderStyleRoundedRect;
+    _claimsField.delegate = self;
+    
+    UIButton *claimsButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    claimsButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [claimsButton setTitle:@"Claims" forState:UIControlStateNormal];
+    [claimsButton addTarget:self action:@selector(onClaimsButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+    [layout addControl:_claimsField button:claimsButton];
+    
     UIButton* clearCookies = [UIButton buttonWithType:UIButtonTypeSystem];
     [clearCookies setTitle:@"Clear Cookies" forState:UIControlStateNormal];
     [clearCookies addTarget:self action:@selector(clearCookies:) forControlEvents:UIControlEventTouchUpInside];
@@ -147,7 +197,12 @@
     [clearCache setTitle:@"Clear Cache" forState:UIControlStateNormal];
     [clearCache addTarget:self action:@selector(clearCache:) forControlEvents:UIControlEventTouchUpInside];
     
-    UIView* clearButtonsView = [self createTwoItemLayoutView:clearCookies item2:clearCache];
+    UIButton* wipeUpn = [UIButton buttonWithType:UIButtonTypeSystem];
+    [wipeUpn setTitle:@"Wipe cache" forState:UIControlStateNormal];
+    [wipeUpn addTarget:self action:@selector(wipeCache:) forControlEvents:UIControlEventTouchUpInside];
+    
+    
+    UIView* clearButtonsView = [self createThreeItemLayoutView:clearCookies item2:clearCache item3:wipeUpn];
     [layout addCenteredView:clearButtonsView key:@"clearButtons"];
     
     _resultView = [[UITextView alloc] init];
@@ -156,6 +211,7 @@
     _resultView.layer.cornerRadius = 8.0f;
     _resultView.backgroundColor = [UIColor colorWithRed:0.96f green:0.96f blue:0.96f alpha:1.0f];
     _resultView.editable = NO;
+    _resultView.text = [NSString stringWithFormat:@"ADAL %@", ADAL_VERSION_NSSTRING];
     [layout addView:_resultView key:@"result"];
     
     UIView* contentView = [layout contentView];
@@ -315,6 +371,10 @@
                                                object:nil];
     
     [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleLightContent];
+    
+    self.claimsPickerController = [ADTestAppClaimsPickerController alertControllerWithTitle:@"" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    self.claimsPickerController.claimsTextField = _claimsField;
+    self.claimsPickerController.claims = @{@"MFA" : @"%7B%22access_token%22%3A%7B%22polids%22%3A%7B%22essential%22%3Atrue%2C%22values%22%3A%5B%225ce770ea-8690-4747-aa73-c5b3cd509cd4%22%5D%7D%7D%7D", @"MAM CA" : @"%7B%22access_token%22%3A%7B%22polids%22%3A%7B%22essential%22%3Atrue%2C%22values%22%3A%5B%22d77e91f0-fc60-45e4-97b8-14a1337faa28%22%5D%7D%7D%7D"};
 }
 
 - (void)keyboardWillShow:(NSNotification *)aNotification
@@ -357,11 +417,10 @@
 {
     [_profileButton setTitle:[ADTestAppSettings currentProfileTitle] forState:UIControlStateNormal];
     ADTestAppSettings* settings = [ADTestAppSettings settings];
-    NSString* defaultUser = settings.defaultUser;
-    if (![NSString adIsStringNilOrBlank:defaultUser])
-    {
-        _userIdField.text = defaultUser;
-    }
+    
+    _userIdField.text = settings.defaultUser;
+    _extraQueryParamsField.text = settings.extraQueryParameters;
+    _claimsField.text = nil;
     
     self.navigationController.navigationBarHidden = YES;
     _validateAuthority.selectedSegmentIndex = settings.validateAuthority ? 0 : 1;
@@ -457,7 +516,7 @@
             break;
     }
     
-    NSString* resultText = [NSString stringWithFormat:@"{\n\tstatus = %@;\n\terror = %@\n\tcorrelation ID = %@\n\ttokenCacheItem = %@\n}", resultStatus, result.error, result.correlationId, result.tokenCacheItem];
+    NSString* resultText = [NSString stringWithFormat:@"{\n\tstatus = %@;\n\terror = %@\n\tcorrelation ID = %@\n\ttokenCacheItem = %@\n\tauthority = %@\n}", resultStatus, result.error, result.correlationId, result.tokenCacheItem, result.authority];
     
     [_resultView setText:resultText];
     
@@ -472,6 +531,8 @@
         return AD_PROMPT_ALWAYS;
     if ([label isEqualToString:@"Auto"])
         return AD_PROMPT_AUTO;
+    if ([label isEqualToString:@"Force"])
+        return AD_FORCE_PROMPT;
     
     @throw @"Do not recognize prompt behavior";
 }
@@ -483,6 +544,9 @@
     NSString* resource = [settings resource];
     NSString* clientId = [settings clientId];
     NSURL* redirectUri = [settings redirectUri];
+    NSString* extraQueryParameters = _extraQueryParamsField.text;
+    NSString* claims = _claimsField.text;
+    
     ADUserIdentifier* identifier = [self identifier];
     ADCredentialsType credType = [self credType];
     
@@ -519,7 +583,8 @@
                           redirectUri:redirectUri
                        promptBehavior:[self promptBehavior]
                        userIdentifier:identifier
-                 extraQueryParameters:nil
+                 extraQueryParameters:extraQueryParameters
+                               claims:claims
                       completionBlock:^(ADAuthenticationResult *result)
     {
         if (fBlockHit)
@@ -549,6 +614,13 @@
         });
     }];
     
+}
+
+- (IBAction)onClaimsButtonTapped:(UIButton *)sender
+{
+    self.claimsPickerController.popoverPresentationController.sourceView = sender;
+    self.claimsPickerController.popoverPresentationController.sourceRect = sender.bounds;
+    [self presentViewController:self.claimsPickerController animated:YES completion:nil];
 }
 
 - (IBAction)cancelAuth:(id)sender
@@ -625,6 +697,35 @@
     }
     
     _resultView.text = [NSString stringWithFormat:@"Cleared %lu cookies.", (unsigned long)cookies.count];
+}
+
+- (IBAction)wipeCache:(id)sender
+{
+    NSString* userId = [_userIdField text];
+    
+    if (!userId || [userId isEqualToString:@""])
+    {
+        UIAlertController* alert = [UIAlertController alertControllerWithTitle:@"Error!"
+                                                                       message:@"Wipe cache needs a userId"
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"close" style:UIAlertActionStyleDefault handler:nil]];
+        [self presentViewController:alert animated:YES completion:nil];
+        return;
+    }
+    
+    ADAuthenticationError *error = nil;
+    if (![[ADKeychainTokenCache defaultKeychainCache] wipeAllItemsForUserId:userId error:&error])
+    {
+        UIAlertController* alert = [UIAlertController alertControllerWithTitle:@"Error!"
+                                                                       message:error.localizedDescription
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"close" style:UIAlertActionStyleDefault handler:nil]];
+        [self presentViewController:alert animated:YES completion:nil];
+        return;
+    }
+    
+    _resultView.text = [NSString stringWithFormat:@"Wiped cache for %@.", userId];
+    
 }
 
 - (IBAction)changeProfile:(id)sender

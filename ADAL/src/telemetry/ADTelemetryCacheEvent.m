@@ -83,4 +83,22 @@
     [self setProperty:AD_TELEMETRY_KEY_FRT_STATUS value:status];
 }
 
+- (void)setSpeInfo:(NSString *)speInfo
+{
+    if (![NSString adIsStringNilOrBlank:speInfo])
+    {
+        [self setProperty:AD_TELEMETRY_KEY_SPE_INFO value:speInfo];
+    }
+}
+
+- (void)setCacheWipeApp:(NSString *)wipeApp
+{
+    [self setProperty:AD_TELEMETRY_KEY_WIPE_APP value:wipeApp];
+}
+
+- (void)setCacheWipeTime:(NSString *)wipeTime
+{
+    [self setProperty:AD_TELEMETRY_KEY_WIPE_TIME value:wipeTime];
+}
+
 @end
