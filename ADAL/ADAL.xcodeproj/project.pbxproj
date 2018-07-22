@@ -764,6 +764,7 @@
 		B299FF1D1F22C338004A2CB9 /* ADURLExtensionsTest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ADURLExtensionsTest.m; sourceTree = "<group>"; };
 		B29CD3971EC1196C001791CC /* ADRegistrationInformation.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ADRegistrationInformation.m; sourceTree = "<group>"; };
 		B2B7850F1F733C1E00B776BD /* NSStringTelemetryExtensionsTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NSStringTelemetryExtensionsTests.m; sourceTree = "<group>"; };
+		C53DCEB92104007E009A848A /* ADAL-core.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ADAL-core.pch"; sourceTree = "<group>"; };
 		D60B65371F355C5700A89487 /* ADAuthorityValidationRequest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ADAuthorityValidationRequest.h; sourceTree = "<group>"; };
 		D60B65381F355C5700A89487 /* ADAuthorityValidationRequest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ADAuthorityValidationRequest.m; sourceTree = "<group>"; };
 		D622564F1F4C9EE8003D5DF4 /* ADTestAuthorityValidationResponse.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ADTestAuthorityValidationResponse.h; sourceTree = "<group>"; };
@@ -1034,6 +1035,7 @@
 				9453C3A41C583AA8006B9E79 /* public */,
 				60C351B91DA0D588006C8435 /* ADAL.m */,
 				D67D3D401F38542700660F32 /* ADAL.pch */,
+				C53DCEB92104007E009A848A /* ADAL-core.pch */,
 				9453C3A31C583A9C006B9E79 /* ADAL_Internal.h */,
 				8BB8345B18074A58007F9F0D /* ADAuthenticationContext.m */,
 				D6E43A681B04026D000F5BE2 /* ADAuthenticationContext+Internal.h */,
@@ -3089,7 +3091,7 @@
 				DSTROOT = /usr/local/lib;
 				GCC_INSTRUMENT_PROGRAM_FLOW_ARCS = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = src/ADAL.pch;
+				GCC_PREFIX_HEADER = "src/ADAL-core.pch";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
@@ -3114,7 +3116,7 @@
 				DSTROOT = /usr/local/lib;
 				GCC_INSTRUMENT_PROGRAM_FLOW_ARCS = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = src/ADAL.pch;
+				GCC_PREFIX_HEADER = "src/ADAL-core.pch";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
