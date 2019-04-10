@@ -271,9 +271,11 @@ volatile int sAsyncExecuted;//The number of asynchronous callbacks executed.
                                         resource:(NSString *)resource
                                         clientId:(NSString *)clientId
                                       oauthError:(NSString *)oauthError
+                                   oauthSubError:(id)suberror
                                    correlationId:(NSUUID *)correlationId
+                                   requestParams:(NSDictionary *)requestParams
 {
-    NSString* requestUrlString = [NSString stringWithFormat:@"%@/oauth2/token?x-client-Ver=" ADAL_VERSION_STRING, authority];
+    NSString* requestUrlString = [NSString stringWithFormat:@"%@/oauth2/token", authority];
     
     NSDictionary *requestHeaders = nil;
     if (correlationId)
@@ -286,19 +288,27 @@ volatile int sAsyncExecuted;//The number of asynchronous callbacks executed.
     {
         requestHeaders = [ADTestURLResponse defaultHeaders];
     }
+
+    NSMutableDictionary *requestParamsBody = [@{ OAUTH2_GRANT_TYPE : @"refresh_token",
+                                                OAUTH2_REFRESH_TOKEN : refreshToken,
+                                                OAUTH2_RESOURCE : resource,
+                                                OAUTH2_CLIENT_ID : clientId } mutableCopy];
+
+    [requestParamsBody addEntriesFromDictionary:requestParams];
+    
+    NSMutableDictionary *responseDict = [NSMutableDictionary new];
+    responseDict[OAUTH2_ERROR] = oauthError;
+    responseDict[OAUTH2_ERROR_DESCRIPTION] = @"oauth error description";
+    responseDict[@"suberror"] = suberror;
     
     ADTestURLResponse* response =
     [ADTestURLResponse requestURLString:requestUrlString
                          requestHeaders:requestHeaders
-                      requestParamsBody:@{ OAUTH2_GRANT_TYPE : @"refresh_token",
-                                           OAUTH2_REFRESH_TOKEN : refreshToken,
-                                           OAUTH2_RESOURCE : resource,
-                                           OAUTH2_CLIENT_ID : clientId }
+                      requestParamsBody:requestParamsBody
                       responseURLString:@"https://contoso.com"
                            responseCode:400
                        httpHeaderFields:@{@"x-ms-clitelem" : @"1,7000,7,255.0643,I"}
-                       dictionaryAsJSON:@{ OAUTH2_ERROR : oauthError,
-                                           OAUTH2_ERROR_DESCRIPTION : @"oauth error description"}];
+                       dictionaryAsJSON:responseDict];
     
     return response;
 }
@@ -310,7 +320,9 @@ volatile int sAsyncExecuted;//The number of asynchronous callbacks executed.
                                   resource:TEST_RESOURCE
                                   clientId:TEST_CLIENT_ID
                                 oauthError:oauthError
-                             correlationId:TEST_CORRELATION_ID];
+                             oauthSubError:nil
+                             correlationId:TEST_CORRELATION_ID
+                             requestParams:nil];
 
 }
 
@@ -422,7 +434,8 @@ volatile int sAsyncExecuted;//The number of asynchronous callbacks executed.
                           correlationId:correlationId
                            responseCode:400
                         responseHeaders:responseHeaders
-                           responseJson:jsonBody];
+                           responseJson:jsonBody
+                          requestParams:nil];
 }
 
 - (ADTestURLResponse *)adDefaultRefreshReponseCode:(NSInteger)responseCode
@@ -437,7 +450,8 @@ volatile int sAsyncExecuted;//The number of asynchronous callbacks executed.
                           correlationId:TEST_CORRELATION_ID
                            responseCode:responseCode
                         responseHeaders:responseHeaders
-                           responseJson:responseJson];
+                           responseJson:responseJson
+                          requestParams:nil];
 }
 
 - (ADTestURLResponse *)adResponseRefreshToken:(NSString *)oldRefreshToken
@@ -449,9 +463,10 @@ volatile int sAsyncExecuted;//The number of asynchronous callbacks executed.
                                  responseCode:(NSInteger)responseCode
                               responseHeaders:(NSDictionary *)responseHeaders
                                  responseJson:(NSDictionary *)responseJson
+                                requestParams:(NSDictionary *)requestParams
 
 {
-    NSString* requestUrlString = [NSString stringWithFormat:@"%@/oauth2/token?x-client-Ver=" ADAL_VERSION_STRING, authority];
+    NSString* requestUrlString = [NSString stringWithFormat:@"%@/oauth2/token", authority];
     
     NSMutableDictionary* headers = [[ADTestURLResponse defaultHeaders] mutableCopy];
     headers[@"client-request-id"] = [correlationId UUIDString];
@@ -460,13 +475,17 @@ volatile int sAsyncExecuted;//The number of asynchronous callbacks executed.
         [headers addEntriesFromDictionary:requestHeaders];
     }
 
+    NSMutableDictionary *requestDict = [@{  OAUTH2_GRANT_TYPE : @"refresh_token",
+                                            OAUTH2_REFRESH_TOKEN : oldRefreshToken,
+                                            OAUTH2_RESOURCE : resource,
+                                            OAUTH2_CLIENT_ID : clientId } mutableCopy];
+
+    [requestDict addEntriesFromDictionary:requestParams];
+
     ADTestURLResponse* response =
     [ADTestURLResponse requestURLString:requestUrlString
                          requestHeaders:headers
-                      requestParamsBody:@{ OAUTH2_GRANT_TYPE : @"refresh_token",
-                                           OAUTH2_REFRESH_TOKEN : oldRefreshToken,
-                                           OAUTH2_RESOURCE : resource,
-                                           OAUTH2_CLIENT_ID : clientId }
+                      requestParamsBody:requestDict
                       responseURLString:@"https://contoso.com"
                            responseCode:responseCode
                        httpHeaderFields:responseHeaders ? responseHeaders : @{}
@@ -479,7 +498,7 @@ volatile int sAsyncExecuted;//The number of asynchronous callbacks executed.
                                 authority:(NSString *)authority
                             correlationId:(NSUUID *)correlationId
 {
-    NSString* requestUrlString = [NSString stringWithFormat:@"%@/oauth2/token?x-client-Ver=" ADAL_VERSION_STRING, authority];
+    NSString* requestUrlString = [NSString stringWithFormat:@"%@/oauth2/token", authority];
     
     NSMutableDictionary* headers = [[ADTestURLResponse defaultHeaders] mutableCopy];
     headers[@"client-request-id"] = [correlationId UUIDString];

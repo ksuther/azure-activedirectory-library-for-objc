@@ -50,7 +50,10 @@
                                         resource:(NSString *)resource
                                         clientId:(NSString *)clientId
                                       oauthError:(NSString *)oauthError
-                                   correlationId:(NSUUID *)correlationId;
+                                   oauthSubError:(id)suberror
+                                   correlationId:(NSUUID *)correlationId
+                                   requestParams:(NSDictionary *)requestParams;
+
 - (ADTestURLResponse *)adDefaultBadRefreshTokenResponseError:(NSString*)oauthError;
 - (ADTestURLResponse *)adDefaultBadRefreshTokenResponse;
 
@@ -116,7 +119,8 @@
                                 correlationId:(NSUUID *)correlationId
                                  responseCode:(NSInteger)responseCode
                               responseHeaders:(NSDictionary *)responseHeaders
-                                 responseJson:(NSDictionary *)responseJson;
+                                 responseJson:(NSDictionary *)responseJson
+                                requestParams:(NSDictionary *)requestParams;
 
 - (ADTestURLResponse *)adResponseAuthCode:(NSString *)authCode
                                 authority:(NSString *)authority
@@ -175,4 +179,3 @@
 
 //Verifes that "error" local variable is nil. If not prints the error
 #define ADAssertNoError XCTAssertNil(error, "Unexpected error occurred: %@", error.errorDetails)
-

@@ -36,6 +36,8 @@
 #import "ADTelemetry+Internal.h"
 #import "ADTelemetryAPIEvent.h"
 #import "ADTelemetryEventStrings.h"
+#import "ADEnrollmentGateway.h"
+#import "ADClientCapabilitiesUtil.h"
 
 @implementation ADAcquireTokenSilentHandler
 
@@ -125,11 +127,32 @@
     {
         request_data[OAUTH2_SCOPE] = _requestParams.scope;
     }
+
+    NSString *claims = [ADClientCapabilitiesUtil claimsParameterFromCapabilities:_requestParams.clientCapabilities
+                                                                 developerClaims:_requestParams.decodedClaims];
+
+    if (![NSString adIsStringNilOrBlank:claims])
+    {
+        request_data[OAUTH2_CLAIMS] = claims;
+    }
     
-    ADWebAuthRequest* webReq =
+    if (![ADHelpers isADFSInstance:_requestParams.authority])
+    {
+        NSString *userId = (cacheItem.userInformation.userId ? cacheItem.userInformation.userId : _requestParams.identifier.userId);
+        ADAuthenticationError *error = nil;
+        NSString *enrollId = [ADEnrollmentGateway enrollmentIDForHomeAccountId:nil
+                                                                          userID:userId
+                                                                           error:&error];
+
+        if (enrollId)
+            [request_data setObject:enrollId forKey:AD_MICROSOFT_ENROLLMENT_ID];
+    }
+
+    ADWebAuthRequest *webReq =
     [[ADWebAuthRequest alloc] initWithURL:[NSURL URLWithString:[[_requestParams authority] stringByAppendingString:OAUTH2_TOKEN_SUFFIX]]
                                   context:_requestParams];
     [webReq setRequestDictionary:request_data];
+    [webReq setRequestMetadata:_requestParams.adRequestMetadata];
     
     AD_LOG_INFO(nil, @"Attempting to acquire an access token from refresh token");
     AD_LOG_INFO_PII(nil, @"Attempting to acquire an access token from refresh token clientId: '%@', resource: '%@'", _requestParams.clientId, _requestParams.resource);
@@ -152,7 +175,7 @@
          resultItem.authority = [_requestParams authority];
          
          
-         ADAuthenticationResult *result = [resultItem processTokenResponse:response fromRefresh:YES requestCorrelationId:_requestParams.correlationId];
+         ADAuthenticationResult *result = [resultItem processTokenResponse:response fromRefreshToken:cacheItem requestCorrelationId:_requestParams.correlationId];
          if (cacheItem)//The request came from the cache item, update it:
          {
              [[_requestParams tokenCache] updateCacheToResult:result
@@ -301,7 +324,7 @@
     }
     
     // If we have a good (non-expired) access token then return it right away
-    if (item.accessToken && !item.isExpired)
+    if (item.accessToken && !item.isExpired && !_requestParams.forceRefresh)
     {
         [ADLogger logToken:item.accessToken
                  tokenType:@"AT"
@@ -317,7 +340,7 @@
     }
     
     // If the access token is good in terms of extended lifetime then store it for later use
-    if (item.accessToken && item.isExtendedLifetimeValid)
+    if (item.accessToken && item.isExtendedLifetimeValid && !_requestParams.forceRefresh)
     {
         _extendedLifetimeAccessTokenItem = item;
     }

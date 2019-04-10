@@ -44,6 +44,7 @@ NSString *const OAUTH2_REFRESH_TOKEN      = @"refresh_token";
 NSString *const OAUTH2_RESOURCE           = @"resource";
 NSString *const OAUTH2_RESPONSE_TYPE      = @"response_type";
 NSString *const OAUTH2_SCOPE              = @"scope";
+NSString *const OAUTH2_CLAIMS             = @"claims";
 NSString *const OAUTH2_STATE              = @"state";
 NSString *const OAUTH2_TOKEN              = @"token";
 NSString *const OAUTH2_TOKEN_SUFFIX       = @"/oauth2/token";
@@ -67,6 +68,8 @@ NSString *const BROKER_MESSAGE_VERSION          = @"msg_protocol_ver";
 NSString *const BROKER_APP_VERSION              = @"x-broker-app-ver";
 NSString *const BROKER_RESPONSE_KEY             = @"response";
 NSString *const BROKER_HASH_KEY                 = @"hash";
+NSString *const BROKER_INTUNE_RESPONSE_KEY      = @"intune_mam_token";
+NSString *const BROKER_INTUNE_HASH_KEY          = @"intune_mam_token_hash";
 
 NSString *const ADAL_CLIENT_TELEMETRY           = @"x-ms-clitelem";
 
@@ -76,6 +79,8 @@ NSString *const ADAL_ID_VERSION           = @"x-client-Ver";
 NSString *const ADAL_ID_CPU               = @"x-client-CPU";//E.g. ARM64
 NSString *const ADAL_ID_OS_VER            = @"x-client-OS";//iOS/OSX version
 NSString *const ADAL_ID_DEVICE_MODEL      = @"x-client-DM";//E.g. iPhone
+NSString *const ADAL_ID_APP_NAME          = @"x-app-name"; // Application displayable name
+NSString *const ADAL_ID_APP_VERSION       = @"x-app-ver"; // Application version
 
 //Internal constants:
 NSString *const AUTH_FAILED               = @"Authentication Failed";
@@ -94,6 +99,12 @@ NSString *const AAD_SECURECONVERSATION_LABEL = @"AzureAD-SecureConversation";
 
 NSString *const AUTH_USERNAME_KEY                = @"username";
 NSString *const AUTH_CLOUD_INSTANCE_HOST_NAME    = @"cloud_instance_host_name";
+
+NSString *const AUTH_SUBERROR                    = @"suberror";
+NSString *const AUTH_PROTECTION_POLICY_REQUIRED  = @"protection_policy_required";
+NSString *const AUTH_ADDITIONAL_USER_IDENTIFIER  = @"adi";
+
+NSString *const AD_MICROSOFT_ENROLLMENT_ID   = @"microsoft_enrollment_id";
 
 //application constants
 NSString* const ADAL_BROKER_SCHEME = @"msauth";

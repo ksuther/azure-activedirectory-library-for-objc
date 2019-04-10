@@ -28,6 +28,9 @@
 #import "ADOAuth2Constants.h"
 #import "ADUserInformation.h"
 #import "NSDictionary+ADExtensions.h"
+#import "ADHelpers.h"
+#import "ADTokenCacheAccessor.h"
+
 
 @implementation ADAuthenticationResult (Internal)
 
@@ -155,12 +158,15 @@ multiResourceRefreshToken: (BOOL) multiResourceRefreshToken
     
     // Otherwise parse out the error condition
     ADAuthenticationError* error = nil;
+    NSMutableDictionary* userInfo = [[NSMutableDictionary alloc] initWithCapacity:3];
     
     NSString* errorDetails = [response valueForKey:OAUTH2_ERROR_DESCRIPTION];
     if (!errorDetails)
     {
         errorDetails = @"Broker did not provide any details";
     }
+
+    userInfo[ADBrokerVersionKey] = [response adStringForKey:BROKER_APP_VERSION];
         
     NSString* strErrorCode = [response valueForKey:@"error_code"];
     NSInteger errorCode = AD_ERROR_TOKENBROKER_UNKNOWN;
@@ -168,7 +174,10 @@ multiResourceRefreshToken: (BOOL) multiResourceRefreshToken
     {
         errorCode = [strErrorCode integerValue];
     }
-    
+
+    userInfo[ADSuberrorKey] = [response adStringForKey:AUTH_SUBERROR];
+    userInfo[ADUserIdKey] = [response adStringForKey:@"user_id"];
+
     NSString* protocolCode = [response valueForKey:@"protocol_code"];
     if (!protocolCode)
     {
@@ -192,9 +201,10 @@ multiResourceRefreshToken: (BOOL) multiResourceRefreshToken
                                                   code:errorCode
                                      protocolErrorCode:protocolCode
                                           errorDetails:errorDetails
-                                         correlationId:correlationId];
+                                         correlationId:correlationId
+                                              userInfo:userInfo];
     }
-    
+
     return [ADAuthenticationResult resultFromError:error correlationId:correlationId];
 }
 

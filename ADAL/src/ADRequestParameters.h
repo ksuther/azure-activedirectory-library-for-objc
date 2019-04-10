@@ -36,6 +36,7 @@
     ADUserIdentifier *_identifier;
     ADTokenCacheAccessor *_tokenCache;
     BOOL _extendedLifetime;
+    BOOL _forceRefresh;
     NSUUID *_correlationId;
     NSString *_telemetryRequestId;
 }
@@ -45,11 +46,18 @@
 @property (retain, nonatomic) NSString* clientId;
 @property (retain, nonatomic) NSString* redirectUri;
 @property (retain, nonatomic) NSString* scope;
+@property (retain, nonatomic) NSDictionary* decodedClaims;
+@property (retain, nonatomic) NSArray<NSString *>* clientCapabilities;
 @property (retain, nonatomic) ADUserIdentifier* identifier;
 @property (retain, nonatomic) ADTokenCacheAccessor* tokenCache;
 @property BOOL extendedLifetime;
+@property BOOL forceRefresh;
 @property (retain, nonatomic) NSUUID* correlationId;
 @property (retain, nonatomic) NSString* telemetryRequestId;
+@property (nonatomic) NSString *appName;
+@property (nonatomic) NSString *appVersion;
+
+- (NSDictionary *)adRequestMetadata;
 
 - (id)initWithAuthority:(NSString *)authority
                resource:(NSString *)resource

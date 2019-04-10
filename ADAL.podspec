@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
   s.name         = "ADAL"
   s.module_name  = "ADAL"
-  s.version      = "2.6.3"
+  s.version      = "2.6.9"
   s.summary      = "The ADAL SDK for iOS gives you the ability to add Azure Identity authentication to your application"
 
   s.description  = <<-DESC
@@ -21,7 +21,6 @@ Pod::Spec.new do |s|
     :git => "https://github.com/AzureAD/azure-activedirectory-library-for-objc.git", 
     :tag => s.version.to_s
   }
-
   s.pod_target_xcconfig = { 'CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF' => 'NO' }
   
   s.default_subspecs ='app-lib'

@@ -291,9 +291,7 @@
     XCTAssertEqualObjects([tokenCache getMRRT:authority], updatedRT);
     XCTAssertEqualObjects([tokenCache getFRT:authority], updatedRT);
     XCTAssertEqualObjects([tokenCache getAT:authority], updatedAT);
-    
-    [self waitForExpectationsWithTimeout:1 handler:nil];
-    
+        
     __auto_type record = [[ADAuthorityValidation sharedInstance].aadCache tryCheckCache:[NSURL URLWithString:authority]];
     XCTAssertNotNil(record);
     XCTAssertFalse(record.validated);
@@ -309,7 +307,7 @@
     requestParams.correlationId = [NSUUID UUID];
     
     NSURL* requestURL = [ADAuthorityValidationRequest urlForAuthorityValidation:authority trustedHost:@"login.windows.net"];
-    NSString* requestURLString = [NSString stringWithFormat:@"%@&x-client-Ver=" ADAL_VERSION_STRING, requestURL.absoluteString];
+    NSString* requestURLString = requestURL.absoluteString;
     
     requestURL = [NSURL URLWithString:requestURLString];
     
@@ -746,7 +744,9 @@ CreateAuthContext(NSString *authority,
                            clientId:TEST_CLIENT_ID
      // invalid_grant should result in ADAL tombstoning the token
                          oauthError:@"invalid_grant"
-                      correlationId:TEST_CORRELATION_ID];
+                      oauthSubError:nil
+                      correlationId:TEST_CORRELATION_ID
+                      requestParams:nil];
     
     ADTestURLResponse *validationResponse = CreateAuthorityValidationResponse(authority, nil, preferredAuthority);
     [ADTestURLSession addResponses:@[validationResponse, tokenResponse]];

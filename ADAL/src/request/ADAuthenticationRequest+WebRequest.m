@@ -38,6 +38,7 @@
 #import "ADTokenCacheItem+Internal.h"
 #import "ADWebAuthRequest.h"
 #import "NSString+ADURLExtensions.h"
+#import "ADClientCapabilitiesUtil.h"
 
 #import <libkern/OSAtomic.h>
 
@@ -51,6 +52,8 @@
     ADWebAuthRequest* req = [[ADWebAuthRequest alloc] initWithURL:[NSURL URLWithString:urlString]
                                                           context:_requestParams];
     [req setRequestDictionary:request_data];
+    [req setRequestMetadata:_requestParams.adRequestMetadata];
+
     [req sendRequest:^(ADAuthenticationError *error, NSDictionary *response)
      {
          if (error)
@@ -66,7 +69,7 @@
          item.clientId = [_requestParams clientId];
          item.authority = authority;
          ADAuthenticationResult* result = [item processTokenResponse:response
-                                                         fromRefresh:NO
+                                                    fromRefreshToken:nil
                                                 requestCorrelationId:[_requestParams correlationId]];
          completionBlock(result);
          
@@ -116,7 +119,7 @@
                                  OAUTH2_REDIRECT_URI, [[_requestParams redirectUri] adUrlFormEncode],
                                  OAUTH2_STATE, state];
     
-    [startUrl appendFormat:@"&%@", [[ADLogger adalId] adURLFormEncode]];
+    [startUrl appendFormat:@"&%@", [[ADLogger adalMetadata] adURLFormEncode]];
     
     if ([_requestParams identifier] && [[_requestParams identifier] isDisplayable] && ![NSString adIsStringNilOrBlank:[_requestParams identifier].userId])
     {
@@ -145,11 +148,13 @@
             [startUrl appendFormat:@"&%@", queryParams];
         }
     }
+
+    NSString *claims = [ADClientCapabilitiesUtil claimsParameterFromCapabilities:_requestParams.clientCapabilities
+                                                                 developerClaims:_requestParams.decodedClaims];
     
-    if (![NSString adIsStringNilOrBlank:_claims])
+    if (![NSString adIsStringNilOrBlank:claims])
     {
-        NSString *claimsParam = _claims.adTrimmedString;
-        [startUrl appendFormat:@"&claims=%@", claimsParam];
+        [startUrl appendFormat:@"&%@=%@", OAUTH2_CLAIMS, claims.adUrlFormEncode];
     }
     
     return startUrl;
@@ -274,6 +279,14 @@
         {
             [requestData setObject:_requestParams.scope forKey:OAUTH2_SCOPE];
         }
+
+        NSString *claims = [ADClientCapabilitiesUtil claimsParameterFromCapabilities:_requestParams.clientCapabilities
+                                                                     developerClaims:_requestParams.decodedClaims];
+        
+        if (![NSString adIsStringNilOrBlank:claims])
+        {
+            [requestData setObject:claims forKey:OAUTH2_CLAIMS];
+        }
         
         if ([_requestParams identifier] && [[_requestParams identifier] isDisplayable] && ![NSString adIsStringNilOrBlank:[_requestParams identifier].userId])
         {
@@ -285,6 +298,8 @@
                                                               context:_requestParams];
         [req setIsGetRequest:YES];
         [req setRequestDictionary:requestData];
+        [req setRequestMetadata:_requestParams.adRequestMetadata];
+        
         [req sendRequest:^(ADAuthenticationError *error, NSDictionary * parameters)
          {
              if (error && ![parameters objectForKey:@"url"]) // auth code and OAuth2 error could be in endURL

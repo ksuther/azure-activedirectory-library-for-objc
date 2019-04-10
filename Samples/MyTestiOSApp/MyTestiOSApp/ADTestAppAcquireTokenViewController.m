@@ -27,8 +27,18 @@
 #import "ADTestAppAcquireLayoutBuilder.h"
 #import "ADTestAppProfileViewController.h"
 #import "ADTestAppClaimsPickerController.h"
+#import "ADEnrollmentGateway.h"
 
-@interface ADTestAppAcquireTokenViewController () <UITextFieldDelegate>
+#ifdef AD_MAM_SDK_TESTING
+#import <IntuneMAM/IntuneMAM.h>
+#endif
+
+@interface ADTestAppAcquireTokenViewController ()
+#ifdef AD_MAM_SDK_TESTING
+<UITextFieldDelegate, IntuneMAMComplianceDelegate, IntuneMAMEnrollmentDelegate>
+#else
+<UITextFieldDelegate>
+#endif
 
 @property (nonatomic) ADTestAppClaimsPickerController *claimsPickerController;
 
@@ -50,6 +60,7 @@
     UISegmentedControl* _webViewType;
     UISegmentedControl* _fullScreen;
     UISegmentedControl* _validateAuthority;
+    UISegmentedControl* _enableClientCapabilities;
     
     UITextView* _resultView;
     
@@ -72,6 +83,10 @@
     [self setTabBarItem:tabBarItem];
     
     [self setEdgesForExtendedLayout:UIRectEdgeTop];
+#ifdef AD_MAM_SDK_TESTING
+    [[IntuneMAMComplianceManager instance] setDelegate:self];
+    [[IntuneMAMEnrollmentManager instance] setDelegate:self];
+#endif
     
     return self;
 }
@@ -173,6 +188,10 @@
     
     _validateAuthority = [[UISegmentedControl alloc] initWithItems:@[@"Yes", @"No"]];
     [layout addControl:_validateAuthority title:@"valAuth"];
+
+    _enableClientCapabilities = [[UISegmentedControl alloc] initWithItems:@[@"No", @"Yes"]];
+    _enableClientCapabilities.selectedSegmentIndex = 0;
+    [layout addControl:_enableClientCapabilities title:@"Capabilities"];
     
     _extraQueryParamsField = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 400, 20)];
     _extraQueryParamsField.borderStyle = UITextBorderStyleRoundedRect;
@@ -201,9 +220,23 @@
     [wipeUpn setTitle:@"Wipe cache" forState:UIControlStateNormal];
     [wipeUpn addTarget:self action:@selector(wipeCache:) forControlEvents:UIControlEventTouchUpInside];
     
-    
     UIView* clearButtonsView = [self createThreeItemLayoutView:clearCookies item2:clearCache item3:wipeUpn];
     [layout addCenteredView:clearButtonsView key:@"clearButtons"];
+    
+    UIButton* mamEnroll = [UIButton buttonWithType:UIButtonTypeSystem];
+    [mamEnroll setTitle:@"MAM Enroll" forState:UIControlStateNormal];
+    [mamEnroll addTarget:self action:@selector(mamEnroll:) forControlEvents:UIControlEventTouchUpInside];
+    
+    UIButton* mamUnenroll = [UIButton buttonWithType:UIButtonTypeSystem];
+    [mamUnenroll setTitle:@"MAM Unenroll" forState:UIControlStateNormal];
+    [mamUnenroll addTarget:self action:@selector(mamUnenroll:) forControlEvents:UIControlEventTouchUpInside];
+    
+    UIButton* mamEnrollIds = [UIButton buttonWithType:UIButtonTypeSystem];
+    [mamEnrollIds setTitle:@"MAM Enroll IDs" forState:UIControlStateNormal];
+    [mamEnrollIds addTarget:self action:@selector(mamEnrollIds:) forControlEvents:UIControlEventTouchUpInside];
+    
+    UIView* mamButtonsView = [self createThreeItemLayoutView:mamEnroll item2:mamUnenroll item3:mamEnrollIds];
+    [layout addCenteredView:mamButtonsView key:@"mamButtons"];
     
     _resultView = [[UITextView alloc] init];
     _resultView.layer.borderWidth = 1.0f;
@@ -369,12 +402,10 @@
                                              selector:@selector(keyboardWillHide:)
                                                  name:UIKeyboardWillHideNotification
                                                object:nil];
-    
-    [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleLightContent];
-    
+        
     self.claimsPickerController = [ADTestAppClaimsPickerController alertControllerWithTitle:@"" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
     self.claimsPickerController.claimsTextField = _claimsField;
-    self.claimsPickerController.claims = @{@"MFA" : @"%7B%22access_token%22%3A%7B%22polids%22%3A%7B%22essential%22%3Atrue%2C%22values%22%3A%5B%225ce770ea-8690-4747-aa73-c5b3cd509cd4%22%5D%7D%7D%7D", @"MAM CA" : @"%7B%22access_token%22%3A%7B%22polids%22%3A%7B%22essential%22%3Atrue%2C%22values%22%3A%5B%22d77e91f0-fc60-45e4-97b8-14a1337faa28%22%5D%7D%7D%7D"};
+    self.claimsPickerController.claims = @{@"MFA" : @"%7B%22access_token%22%3A%7B%22polids%22%3A%7B%22essential%22%3Atrue%2C%22values%22%3A%5B%225ce770ea-8690-4747-aa73-c5b3cd509cd4%22%5D%7D%7D%7D", @"MAM CA" : @"%7B%22access_token%22%3A%7B%22polids%22%3A%7B%22essential%22%3Atrue%2C%22values%22%3A%5B%22d77e91f0-fc60-45e4-97b8-14a1337faa28%22%5D%7D%7D%7D", @"DeviceID" : @"%7B%22access_token%22%3A%7B%22deviceid%22%3A%7B%22essential%22%3Atrue%7D%7D%7D"};
 }
 
 - (void)keyboardWillShow:(NSNotification *)aNotification
@@ -551,11 +582,20 @@
     ADCredentialsType credType = [self credType];
     
     BOOL validateAuthority = _validateAuthority.selectedSegmentIndex == 0;
+
+    NSArray *capabilities = nil;
+
+    if (_enableClientCapabilities.selectedSegmentIndex == 1)
+    {
+        capabilities = @[@"cp1"];
+    }
     
     ADAuthenticationError* error = nil;
     ADAuthenticationContext* context = [[ADAuthenticationContext alloc] initWithAuthority:authority
                                                                         validateAuthority:validateAuthority
                                                                                     error:&error];
+    context.clientCapabilities = capabilities;
+
     if (!context)
     {
         NSString* resultText = [NSString stringWithFormat:@"Failed to create AuthenticationContext:\n%@", error];
@@ -637,9 +677,18 @@
     NSURL* redirectUri = [settings redirectUri];
     ADUserIdentifier* identifier = [self identifier];
     BOOL validateAuthority = _validateAuthority.selectedSegmentIndex == 0;
+
+    NSArray *capabilities = nil;
+
+    if (_enableClientCapabilities.selectedSegmentIndex == 1)
+    {
+        capabilities = @[@"cp1"];
+    }
     
     ADAuthenticationError* error = nil;
     ADAuthenticationContext* context = [[ADAuthenticationContext alloc] initWithAuthority:authority validateAuthority:validateAuthority error:&error];
+    context.clientCapabilities = capabilities;
+
     if (!context)
     {
         NSString* resultText = [NSString stringWithFormat:@"Failed to create AuthenticationContext:\n%@", error];
@@ -649,7 +698,12 @@
     
     __block BOOL fBlockHit = NO;
     
-    [context acquireTokenSilentWithResource:resource clientId:clientId redirectUri:redirectUri userId:identifier.userId completionBlock:^(ADAuthenticationResult *result)
+    [context acquireTokenSilentWithResource:resource
+                                   clientId:clientId
+                                redirectUri:redirectUri
+                                     userId:identifier.userId
+                                     claims:_claimsField.text
+                            completionBlock:^(ADAuthenticationResult *result)
     {
         if (fBlockHit)
         {
@@ -732,5 +786,63 @@
 {
     [self.navigationController pushViewController:[ADTestAppProfileViewController sharedProfileViewController] animated:YES];
 }
+
+- (IBAction)mamEnroll:(id)sender
+{
+#ifdef AD_MAM_SDK_TESTING
+    if ([NSString adIsStringNilOrBlank:self.identifier.userId])
+    {
+        _resultView.text = [NSString stringWithFormat:@"Please specify user id before clicking register!"];
+        return;
+    }
+    
+    ADTestAppSettings* settings = [ADTestAppSettings settings];
+    [[IntuneMAMPolicyManager instance] setAadAuthorityUriOverride:settings.authority];
+    [[IntuneMAMPolicyManager instance] setAadClientIdOverride:settings.clientId];
+    [[IntuneMAMPolicyManager instance] setAadRedirectUriOverride:settings.redirectUri.absoluteString];
+    
+    [[IntuneMAMComplianceManager instance] remediateComplianceForIdentity:self.identifier.userId silent:NO];
+#endif
+}
+
+- (IBAction)mamUnenroll:(id)sender
+{
+#ifdef AD_MAM_SDK_TESTING
+    if ([NSString adIsStringNilOrBlank:self.identifier.userId])
+    {
+        _resultView.text = [NSString stringWithFormat:@"Please specify user id before clicking unregister!"];
+        return;
+    }
+
+    _resultView.text = [NSString stringWithFormat:@"Sending Unenroll request to MAM SDK..."];
+    
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        [[IntuneMAMEnrollmentManager instance] deRegisterAndUnenrollAccount:self.identifier.userId withWipe:YES];
+    });
+#endif
+}
+
+- (IBAction)mamEnrollIds:(id)sender
+{
+#ifdef AD_MAM_SDK_TESTING
+    _resultView.text = [ADEnrollmentGateway allEnrollmentIdsJSON];
+#endif
+}
+
+#ifdef AD_MAM_SDK_TESTING
+- (void)identity:(NSString*)identity hasComplianceStatus:(IntuneMAMComplianceStatus)status withErrorString:(NSString *)error
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        _resultView.text = [NSString stringWithFormat:@"MAM Enrollment for %@ with status: %lu, error: %@", identity, (unsigned long)status, error];
+    });
+}
+
+- (void)unenrollRequestWithStatus:(IntuneMAMEnrollmentStatus *_Nonnull)status
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        _resultView.text = [NSString stringWithFormat:@"Unenrollment status for %@: success: %@, status code: %lu, errorString: %@, error: %@", status.identity, status.didSucceed ? @"YES":@"NO", (unsigned long)status.statusCode, status.errorString, status.error];
+    });
+}
+#endif
 
 @end

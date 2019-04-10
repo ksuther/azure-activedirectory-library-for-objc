@@ -44,6 +44,7 @@ extern NSString *const OAUTH2_REFRESH_TOKEN;
 extern NSString *const OAUTH2_RESOURCE;
 extern NSString *const OAUTH2_RESPONSE_TYPE;
 extern NSString *const OAUTH2_SCOPE;
+extern NSString *const OAUTH2_CLAIMS;
 extern NSString *const OAUTH2_STATE;
 extern NSString *const OAUTH2_TOKEN;
 extern NSString *const OAUTH2_TOKEN_SUFFIX;
@@ -66,6 +67,8 @@ extern NSString *const BROKER_MESSAGE_VERSION;
 extern NSString *const BROKER_APP_VERSION;
 extern NSString *const BROKER_RESPONSE_KEY;
 extern NSString *const BROKER_HASH_KEY;
+extern NSString *const BROKER_INTUNE_RESPONSE_KEY;
+extern NSString *const BROKER_INTUNE_HASH_KEY;
 
 extern NSString *const ADAL_CLIENT_TELEMETRY;
 
@@ -75,6 +78,8 @@ extern NSString *const ADAL_ID_VERSION;
 extern NSString *const ADAL_ID_CPU;//E.g. ARM64
 extern NSString *const ADAL_ID_OS_VER;//iOS/OSX version
 extern NSString *const ADAL_ID_DEVICE_MODEL;//E.g. iPhone 5S
+extern NSString *const ADAL_ID_APP_NAME;
+extern NSString *const ADAL_ID_APP_VERSION;
 
 
 extern NSString *const AUTH_FAILED; //Generic error.
@@ -94,6 +99,12 @@ extern NSString *const AAD_SECURECONVERSATION_LABEL;
 
 extern NSString *const AUTH_USERNAME_KEY;
 extern NSString *const AUTH_CLOUD_INSTANCE_HOST_NAME;
+
+extern NSString *const AUTH_SUBERROR;
+extern NSString *const AUTH_PROTECTION_POLICY_REQUIRED;
+extern NSString *const AUTH_ADDITIONAL_USER_IDENTIFIER;
+
+extern NSString *const AD_MICROSOFT_ENROLLMENT_ID;
 
 extern NSString* const ADAL_BROKER_SCHEME;
 extern NSString* const ADAL_BROKER_APP_REDIRECT_URI;

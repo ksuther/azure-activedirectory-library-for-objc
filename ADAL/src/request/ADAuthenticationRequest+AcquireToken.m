@@ -37,6 +37,8 @@
 #import "ADBrokerHelper.h"
 #import "NSDictionary+ADExtensions.h"
 #import "ADAuthorityUtils.h"
+#import "ADEnrollmentGateway.h"
+#import "ADClientCapabilitiesUtil.h"
 
 @implementation ADAuthenticationRequest (AcquireToken)
 
@@ -211,25 +213,10 @@
         }
         return NO;
     }
-    
-    // Make sure claims is properly encoded
-    NSString* claimsParams = _claims.adTrimmedString;
-    NSURL* url = [NSURL URLWithString:[NSMutableString stringWithFormat:@"%@?claims=%@", _context.authority, claimsParams]];
-    if (!url)
-    {
-        if (error)
-        {
-            *error = [ADAuthenticationError errorFromAuthenticationError:AD_ERROR_DEVELOPER_INVALID_ARGUMENT
-                                                            protocolCode:nil
-                                                            errorDetails:@"claims is not properly encoded. Please make sure it is URL encoded."
-                                                           correlationId:_requestParams.correlationId];
-        }
-        return NO;
-    }
-    
-    // Always skip cache if claims parameter is not nil/empty
-    _skipCache = YES;
-    
+
+    // Always skip access token cache if claims parameter is not nil/empty
+    [_requestParams setForceRefresh:YES];
+
     return YES;
 }
 
@@ -298,18 +285,32 @@
 
     if (_silent && !_allowSilent)
     {
+        
         //The cache lookup and refresh token attempt have been unsuccessful,
         //so credentials are needed to get an access token, but the developer, requested
-        //no UI to be shown:
-        NSDictionary* underlyingError = _underlyingError ? @{NSUnderlyingErrorKey:_underlyingError} : nil;
-        ADAuthenticationError* error =
-        [ADAuthenticationError errorFromAuthenticationError:AD_ERROR_SERVER_USER_INPUT_NEEDED
-                                               protocolCode:nil
-                                               errorDetails:ADCredentialsNeeded
-                                                   userInfo:underlyingError
-                                              correlationId:correlationId];
+        //no UI to be shown.
+        // If the underlying error is AD_ERROR_SERVER_PROTECTION_POLICY_REQUIRED,
+        // Intune MAM remediation is needed and we should pass that instead.
+        ADAuthenticationResult* result;
+        if (AD_ERROR_SERVER_PROTECTION_POLICY_REQUIRED == _underlyingError.code)
+        {
+            result = [ADAuthenticationResult resultFromError:_underlyingError correlationId:correlationId];
+        }
+        else
+        {
+            NSMutableDictionary *underlyingUserInfo = [NSMutableDictionary new];
+            [underlyingUserInfo addEntriesFromDictionary:_underlyingError.userInfo];
+            underlyingUserInfo[NSUnderlyingErrorKey] = _underlyingError;
+            
+            ADAuthenticationError* error =
+            [ADAuthenticationError errorFromAuthenticationError:AD_ERROR_SERVER_USER_INPUT_NEEDED
+                                                   protocolCode:nil
+                                                   errorDetails:ADCredentialsNeeded
+                                                       userInfo:underlyingUserInfo
+                                                  correlationId:correlationId];
+            result = [ADAuthenticationResult resultFromError:error correlationId:correlationId];
+        }
         
-        ADAuthenticationResult* result = [ADAuthenticationResult resultFromError:error correlationId:correlationId];
         completionBlock(result);
         return;
     }
@@ -514,7 +515,27 @@
     {
         [request_data setValue:_requestParams.scope forKey:OAUTH2_SCOPE];
     }
-    
+
+    if (![ADHelpers isADFSInstance:_requestParams.authority])
+    {
+        ADAuthenticationError *error = nil;
+        NSString *enrollId = [ADEnrollmentGateway enrollmentIDForHomeAccountId:nil
+                                                                          userID:_requestParams.identifier.userId
+                                                                           error:&error];
+        if (enrollId)
+        {
+            [request_data setObject:enrollId forKey:AD_MICROSOFT_ENROLLMENT_ID];
+        }
+    }
+
+    NSString *claims = [ADClientCapabilitiesUtil claimsParameterFromCapabilities:_requestParams.clientCapabilities
+                                                                 developerClaims:_requestParams.decodedClaims];
+
+    if (![NSString adIsStringNilOrBlank:claims])
+    {
+        [request_data setObject:claims forKey:OAUTH2_CLAIMS];
+    }
+
     [self executeRequest:request_data
               completion:completionBlock];
 }
